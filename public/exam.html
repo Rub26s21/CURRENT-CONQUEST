@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Current Conquest - Examination Portal">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Examination | Current Conquest</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+        /* Exam page specific styles */
+        .exam-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .exam-header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-md) var(--space-lg);
+            background: var(--surface-glass);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .exam-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+        }
+
+        .exam-round-badge {
+            padding: var(--space-xs) var(--space-md);
+            background: var(--primary-glow);
+            color: var(--primary-light);
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .participant-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .exam-main {
+            padding-top: 80px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .exam-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-xl);
+        }
+
+        .exam-question-container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .exam-progress {
+            margin-bottom: var(--space-xl);
+        }
+
+        .exam-progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-sm);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .exam-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+
+        /* Warning overlay */
+        .warning-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: hsla(0, 0%, 0%, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            text-align: center;
+            padding: var(--space-xl);
+        }
+
+        .warning-overlay.hidden {
+            display: none;
+        }
+
+        .warning-icon-large {
+            width: 80px;
+            height: 80px;
+            background: var(--danger);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: var(--space-xl);
+            animation: pulse 1s infinite;
+        }
+
+        .warning-title {
+            font-size: 2rem;
+            color: var(--danger);
+            margin-bottom: var(--space-md);
+        }
+
+        .warning-text {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin-bottom: var(--space-xl);
+        }
+
+        .warning-count {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* Screen states */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="logo">
+            <div class="logo-icon">CC</div>
+            <span class="title-gradient">Current Conquest</span>
+        </div>
+        <div class="spinner spinner-lg"></div>
+    </div>
+
+    <!-- Warning Overlay (Tab Switch) -->
+    <div class="warning-overlay hidden" id="warningOverlay">
+        <div class="warning-icon-large">⚠️</div>
+        <h1 class="warning-title">Warning!</h1>
+        <p class="warning-text" id="warningText">
+            You switched tabs or windows. This is your first warning.
+            Another violation will result in automatic submission.
+        </p>
+        <p class="warning-count" id="warningCount">Violations: 1/2</p>
+        <button class="btn btn-danger btn-lg" id="dismissWarning">Continue Exam</button>
+    </div>
+
+    <!-- Not Logged In Screen -->
+    <div class="screen waiting-screen" id="notLoggedIn">
+        <div class="waiting-animation"></div>
+        <h1 class="waiting-title">Session Expired</h1>
+        <p class="waiting-message">Your session has expired or you are not logged in. Please login again to continue.
+        </p>
+        <a href="/" class="btn btn-primary btn-lg" style="margin-top: var(--space-xl);">Go to Login</a>
+    </div>
+
+    <!-- Waiting Screen -->
+    <div class="screen waiting-screen" id="waitingScreen">
+        <div class="waiting-animation"></div>
+        <h1 class="waiting-title" id="waitingTitle">Waiting for Round to Start</h1>
+        <p class="waiting-message" id="waitingMessage">
+            Please wait. The coordinator will start the round shortly.
+            Do not close this window.
+        </p>
+        <div id="participantInfoDisplay" style="margin-top: var(--space-xl); color: var(--text-muted);">
+            <p>Logged in as: <span id="displayName">-</span></p>
+            <p>System ID: <span id="displaySystemId">-</span></p>
+        </div>
+    </div>
+
+    <!-- Not Qualified Screen -->
+    <div class="screen waiting-screen" id="notQualifiedScreen">
+        <div style="font-size: 5rem; margin-bottom: var(--space-xl);">😔</div>
+        <h1 class="waiting-title">Not Qualified</h1>
+        <p class="waiting-message">
+            Unfortunately, you did not qualify for the next round.
+            Thank you for participating in Current Conquest!
+        </p>
+    </div>
+
+    <!-- Disqualified Screen -->
+    <div class="screen waiting-screen" id="disqualifiedScreen">
+        <div style="font-size: 5rem; margin-bottom: var(--space-xl);">🚫</div>
+        <h1 class="waiting-title text-danger">Disqualified</h1>
+        <p class="waiting-message" id="disqualificationReason">
+            You have been disqualified from the examination.
+        </p>
+    </div>
+
+    <!-- Exam Screen -->
+    <div class="screen" id="examScreen" style="flex-direction: column;">
+        <header class="exam-header">
+            <div class="exam-header-content">
+                <div class="exam-info">
+                    <div class="logo">
+                        <div class="logo-icon">CC</div>
+                        <span>Current Conquest</span>
+                    </div>
+                    <span class="exam-round-badge" id="roundBadge">Round 1</span>
+                </div>
+                <div class="exam-timer" id="examTimer">
+                    <span>⏱️</span>
+                    <span id="timerDisplay">15:00</span>
+                </div>
+                <div class="participant-info">
+                    <span>👤</span>
+                    <span id="headerName">Participant</span>
+                    <span class="badge badge-neutral" id="headerSystemId">CC-00000</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="exam-main">
+            <div class="exam-content">
+                <div class="exam-question-container">
+                    <!-- Progress -->
+                    <div class="exam-progress">
+                        <div class="exam-progress-info">
+                            <span>Question <span id="currentQuestionNum">1</span> of 15</span>
+                            <span><span id="answeredCount">0</span> answered</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Question Card -->
+                    <div class="question-card" id="questionCard">
+                        <span class="question-number" id="questionLabel">Question 1</span>
+                        <p class="question-text" id="questionText">Loading question...</p>
+
+                        <div class="options-list" id="optionsList">
+                            <!-- Options will be rendered here -->
+                        </div>
+
+                        <div class="exam-actions">
+                            <button class="btn btn-primary btn-lg" id="nextBtn">
+                                <span id="nextBtnText">Next Question</span>
+                                <span>→</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Completion Screen -->
+    <div class="screen completion-screen" id="completionScreen">
+        <div class="completion-icon">✓</div>
+        <h1 class="completion-title">Exam Submitted!</h1>
+        <p class="completion-message" id="completionMessage">
+            Your answers have been successfully submitted.
+            Please wait for the results. Do not close this window.
+        </p>
+        <div id="submissionInfo" style="color: var(--text-muted); font-size: 0.9rem;">
+            <p>Submitted at: <span id="submissionTime">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Current Conquest - Exam Page
+         * Strict exam mode with server-authoritative timer
+         */
+        (function () {
+            'use strict';
+
+            // State
+            let state = {
+                participant: null,
+                currentRound: 0,
+                roundStatus: 'not_started',
+                roundEndsAt: null,
+                examSession: null,
+                currentQuestion: null,
+                selectedOption: null,
+                isSubmitting: false,
+                timerInterval: null,
+                statusInterval: null,
+                tabSwitchCount: 0,
+                serverTimeOffset: 0
+            };
+
+            // DOM Elements
+            const screens = {
+                loading: document.getElementById('loadingScreen'),
+                notLoggedIn: document.getElementById('notLoggedIn'),
+                waiting: document.getElementById('waitingScreen'),
+                notQualified: document.getElementById('notQualifiedScreen'),
+                disqualified: document.getElementById('disqualifiedScreen'),
+                exam: document.getElementById('examScreen'),
+                completion: document.getElementById('completionScreen')
+            };
+
+            const elements = {
+                warningOverlay: document.getElementById('warningOverlay'),
+                warningText: document.getElementById('warningText'),
+                warningCount: document.getElementById('warningCount'),
+                dismissWarning: document.getElementById('dismissWarning'),
+                waitingTitle: document.getElementById('waitingTitle'),
+                waitingMessage: document.getElementById('waitingMessage'),
+                displayName: document.getElementById('displayName'),
+                displaySystemId: document.getElementById('displaySystemId'),
+                roundBadge: document.getElementById('roundBadge'),
+                timerDisplay: document.getElementById('timerDisplay'),
+                examTimer: document.getElementById('examTimer'),
+                headerName: document.getElementById('headerName'),
+                headerSystemId: document.getElementById('headerSystemId'),
+                currentQuestionNum: document.getElementById('currentQuestionNum'),
+                answeredCount: document.getElementById('answeredCount'),
+                progressFill: document.getElementById('progressFill'),
+                questionLabel: document.getElementById('questionLabel'),
+                questionText: document.getElementById('questionText'),
+                optionsList: document.getElementById('optionsList'),
+                nextBtn: document.getElementById('nextBtn'),
+                nextBtnText: document.getElementById('nextBtnText'),
+                completionMessage: document.getElementById('completionMessage'),
+                submissionTime: document.getElementById('submissionTime'),
+                disqualificationReason: document.getElementById('disqualificationReason')
+            };
+
+            // API Helper
+            async function api(endpoint, options = {}) {
+                const response = await fetch(endpoint, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    credentials: 'include'
+                });
+                return response.json();
+            }
+
+            // Show specific screen
+            function showScreen(screenName) {
+                Object.values(screens).forEach(screen => {
+                    screen.classList.remove('active');
+                    screen.style.display = 'none';
+                });
+
+                if (screens[screenName]) {
+                    screens[screenName].classList.add('active');
+                    screens[screenName].style.display = screenName === 'exam' ? 'flex' : 'flex';
+                }
+            }
+
+            // Sync server time
+            async function syncServerTime() {
+                try {
+                    const start = Date.now();
+                    const result = await api('/api/server-time');
+                    const end = Date.now();
+                    const latency = (end - start) / 2;
+
+                    if (result.success) {
+                        const serverTime = new Date(result.serverTime).getTime();
+                        state.serverTimeOffset = serverTime - Date.now() + latency;
+                    }
+                } catch (error) {
+                    console.error('Time sync error:', error);
+                }
+            }
+
+            // Get corrected current time
+            function getServerTime() {
+                return Date.now() + state.serverTimeOffset;
+            }
+
+            // Format time as MM:SS
+            function formatTime(seconds) {
+                if (seconds < 0) seconds = 0;
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            // Update timer display
+            function updateTimer() {
+                if (!state.roundEndsAt) return;
+
+                const now = getServerTime();
+                const endTime = new Date(state.roundEndsAt).getTime();
+                const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+
+                elements.timerDisplay.textContent = formatTime(remaining);
+
+                // Timer warnings
+                if (remaining <= 60) {
+                    elements.examTimer.classList.add('danger');
+                    elements.examTimer.classList.remove('warning');
+                } else if (remaining <= 180) {
+                    elements.examTimer.classList.add('warning');
+                    elements.examTimer.classList.remove('danger');
+                } else {
+                    elements.examTimer.classList.remove('warning', 'danger');
+                }
+
+                // Auto-submit when time expires
+                if (remaining <= 0 && !state.isSubmitting) {
+                    clearInterval(state.timerInterval);
+                    submitExam('auto_timer');
+                }
+            }
+
+            // Start timer
+            function startTimer() {
+                if (state.timerInterval) {
+                    clearInterval(state.timerInterval);
+                }
+                updateTimer();
+                state.timerInterval = setInterval(updateTimer, 1000);
+            }
+
+            // Check session and status
+            async function checkSession() {
+                try {
+                    const result = await api('/api/participant/session');
+
+                    if (!result.success || !result.authenticated) {
+                        showScreen('notLoggedIn');
+                        return;
+                    }
+
+                    state.participant = {
+                        systemId: result.data.systemId,
+                        name: result.data.name
+                    };
+
+                    // Update UI with participant info
+                    elements.displayName.textContent = result.data.name;
+                    elements.displaySystemId.textContent = result.data.systemId;
+                    elements.headerName.textContent = result.data.name;
+                    elements.headerSystemId.textContent = result.data.systemId;
+
+                    // Check qualification status
+                    if (result.data.isDisqualified) {
+                        elements.disqualificationReason.textContent =
+                            result.data.disqualificationReason || 'You have been disqualified from the examination.';
+                        showScreen('disqualified');
+                        return;
+                    }
+
+                    // Handle exam session if exists and submitted
+                    if (result.data.examSession && result.data.examSession.isSubmitted) {
+                        showScreen('completion');
+                        elements.completionMessage.textContent =
+                            'Your answers have been submitted. Please wait for the results.';
+                        return;
+                    }
+
+                    // Initial status check
+                    await checkStatus();
+
+                } catch (error) {
+                    console.error('Session check error:', error);
+                    showScreen('notLoggedIn');
+                }
+            }
+
+            // Check current status
+            async function checkStatus() {
+                try {
+                    const result = await api('/api/participant/status');
+
+                    if (!result.success) {
+                        console.error('Status check failed:', result.message);
+                        return;
+                    }
+
+                    const data = result.data;
+                    state.currentRound = data.currentRound;
+                    state.roundStatus = data.roundStatus;
+                    state.roundEndsAt = data.roundEndsAt;
+
+                    // Check if not qualified
+                    if (!data.canParticipate && data.currentRound > 0 && !data.isQualified) {
+                        showScreen('notQualified');
+                        stopStatusPolling();
+                        return;
+                    }
+
+                    // Handle different states
+                    if (data.roundStatus === 'running' && data.canParticipate) {
+                        // Check if already submitted
+                        if (data.examSession && data.examSession.isSubmitted) {
+                            showScreen('completion');
+                            stopStatusPolling();
+                            return;
+                        }
+
+                        // Start or resume exam
+                        if (!data.examSession) {
+                            await startExam();
+                        } else {
+                            state.examSession = data.examSession;
+                            state.tabSwitchCount = data.examSession.tabSwitchCount || 0;
+                            await loadQuestion(data.examSession.currentQuestion);
+                            showScreen('exam');
+                            startTimer();
+                        }
+                        stopStatusPolling();
+                    } else if (data.roundStatus === 'completed' && data.examSession && data.examSession.isSubmitted) {
+                        showScreen('completion');
+                        stopStatusPolling();
+                    } else {
+                        // Waiting for round to start
+                        updateWaitingScreen(data);
+                        showScreen('waiting');
+                    }
+
+                } catch (error) {
+                    console.error('Status check error:', error);
+                }
+            }
+
+            // Update waiting screen
+            function updateWaitingScreen(data) {
+                if (data.currentRound === 0) {
+                    elements.waitingTitle.textContent = 'Event Starting Soon';
+                    elements.waitingMessage.textContent =
+                        'The event has been activated. Please wait for Round 1 to begin.';
+                } else if (data.roundStatus === 'completed') {
+                    elements.waitingTitle.textContent = `Round ${data.currentRound} Completed`;
+                    elements.waitingMessage.textContent =
+                        'Please wait while results are being processed.';
+                } else {
+                    elements.waitingTitle.textContent = `Waiting for Round ${data.currentRound || 1}`;
+                    elements.waitingMessage.textContent =
+                        'Please wait. The coordinator will start the round shortly.';
+                }
+            }
+
+            // Start status polling
+            function startStatusPolling() {
+                if (state.statusInterval) {
+                    clearInterval(state.statusInterval);
+                }
+                state.statusInterval = setInterval(checkStatus, 3000);
+            }
+
+            // Stop status polling
+            function stopStatusPolling() {
+                if (state.statusInterval) {
+                    clearInterval(state.statusInterval);
+                    state.statusInterval = null;
+                }
+            }
+
+            // Start exam
+            async function startExam() {
+                try {
+                    const result = await api('/api/participant/start-exam', {
+                        method: 'POST'
+                    });
+
+                    if (!result.success) {
+                        console.error('Start exam failed:', result.message);
+                        return;
+                    }
+
+                    state.examSession = {
+                        sessionId: result.data.sessionId,
+                        currentQuestion: result.data.currentQuestion
+                    };
+                    state.roundEndsAt = result.data.roundEndsAt;
+                    state.tabSwitchCount = result.data.tabSwitchCount || 0;
+
+                    elements.roundBadge.textContent = `Round ${result.data.roundNumber}`;
+
+                    await loadQuestion(result.data.currentQuestion);
+                    showScreen('exam');
+                    startTimer();
+
+                } catch (error) {
+                    console.error('Start exam error:', error);
+                }
+            }
+
+            // Load question
+            async function loadQuestion(questionNumber) {
+                try {
+                    const result = await api(`/api/participant/question/${questionNumber}`);
+
+                    if (!result.success) {
+                        console.error('Load question failed:', result.message);
+                        return;
+                    }
+
+                    state.currentQuestion = result.data;
+                    state.selectedOption = result.data.selectedOption;
+
+                    // Update UI
+                    elements.currentQuestionNum.textContent = questionNumber;
+                    elements.questionLabel.textContent = `Question ${questionNumber}`;
+                    elements.questionText.textContent = result.data.questionText;
+                    elements.progressFill.style.width = `${((questionNumber - 1) / 15) * 100}%`;
+
+                    // Update button text
+                    if (questionNumber >= 15) {
+                        elements.nextBtnText.textContent = 'Submit Exam';
+                    } else {
+                        elements.nextBtnText.textContent = 'Next Question';
+                    }
+
+                    // Render options
+                    renderOptions(result.data.options, result.data.selectedOption);
+
+                } catch (error) {
+                    console.error('Load question error:', error);
+                }
+            }
+
+            // Render options
+            function renderOptions(options, selectedOption) {
+                elements.optionsList.innerHTML = '';
+
+                const optionKeys = ['A', 'B', 'C', 'D'];
+
+                optionKeys.forEach(key => {
+                    const optionItem = document.createElement('div');
+                    optionItem.className = 'option-item';
+
+                    const isChecked = selectedOption === key;
+
+                    optionItem.innerHTML = `
+                        <input 
+                            type="radio" 
+                            id="option${key}" 
+                            name="answer" 
+                            value="${key}" 
+                            class="option-input"
+                            ${isChecked ? 'checked' : ''}
+                        >
+                        <label for="option${key}" class="option-label">
+                            <span class="option-indicator">${key}</span>
+                            <span class="option-text">${options[key]}</span>
+                        </label>
+                    `;
+
+                    const input = optionItem.querySelector('input');
+                    input.addEventListener('change', () => {
+                        state.selectedOption = key;
+                    });
+
+                    elements.optionsList.appendChild(optionItem);
+                });
+            }
+
+            // Submit answer and go to next question
+            async function submitAnswer() {
+                if (state.isSubmitting) return;
+                state.isSubmitting = true;
+
+                elements.nextBtn.disabled = true;
+
+                try {
+                    const result = await api('/api/participant/answer', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            questionId: state.currentQuestion.questionId,
+                            selectedOption: state.selectedOption
+                        })
+                    });
+
+                    if (!result.success) {
+                        console.error('Submit answer failed:', result.message);
+                        state.isSubmitting = false;
+                        elements.nextBtn.disabled = false;
+                        return;
+                    }
+
+                    // Update answered count
+                    const currentNum = parseInt(elements.currentQuestionNum.textContent);
+                    elements.answeredCount.textContent = currentNum;
+
+                    if (result.data.isLastQuestion) {
+                        // Submit exam
+                        await submitExam('manual');
+                    } else {
+                        // Load next question
+                        await loadQuestion(result.data.nextQuestion);
+                    }
+
+                } catch (error) {
+                    console.error('Submit answer error:', error);
+                } finally {
+                    state.isSubmitting = false;
+                    elements.nextBtn.disabled = false;
+                }
+            }
+
+            // Submit exam
+            async function submitExam(submissionType = 'manual') {
+                if (state.isSubmitting) return;
+                state.isSubmitting = true;
+
+                try {
+                    const result = await api('/api/participant/submit-exam', {
+                        method: 'POST',
+                        body: JSON.stringify({ submissionType })
+                    });
+
+                    if (result.success) {
+                        clearInterval(state.timerInterval);
+                        showScreen('completion');
+
+                        if (submissionType === 'auto_timer') {
+                            elements.completionMessage.textContent =
+                                'Time\'s up! Your answers have been automatically submitted.';
+                        } else if (submissionType === 'auto_violation') {
+                            elements.completionMessage.textContent =
+                                'Due to policy violations, your exam has been submitted.';
+                        } else {
+                            elements.completionMessage.textContent =
+                                'Your answers have been successfully submitted. Please wait for the results.';
+                        }
+
+                        elements.submissionTime.textContent = new Date().toLocaleTimeString();
+                    }
+
+                } catch (error) {
+                    console.error('Submit exam error:', error);
+                } finally {
+                    state.isSubmitting = false;
+                }
+            }
+
+            // Handle tab switch/visibility change
+            async function handleVisibilityChange() {
+                if (document.hidden && screens.exam.classList.contains('active')) {
+                    // Tab switch during exam
+                    try {
+                        const result = await api('/api/participant/tab-switch', {
+                            method: 'POST',
+                            body: JSON.stringify({ violationType: 'visibility_change' })
+                        });
+
+                        if (result.success) {
+                            state.tabSwitchCount = result.data.tabSwitchCount;
+
+                            if (result.data.autoSubmitted) {
+                                // Exam was auto-submitted
+                                clearInterval(state.timerInterval);
+                                showScreen('completion');
+                                elements.completionMessage.textContent =
+                                    'Due to multiple tab switch violations, your exam has been automatically submitted.';
+                                elements.submissionTime.textContent = new Date().toLocaleTimeString();
+                            } else if (result.data.warning) {
+                                // Show warning
+                                elements.warningText.textContent =
+                                    'You switched tabs or windows. This is your first warning. Another violation will result in automatic submission.';
+                                elements.warningCount.textContent = `Violations: ${state.tabSwitchCount}/2`;
+                                elements.warningOverlay.classList.remove('hidden');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Tab switch report error:', error);
+                    }
+                }
+            }
+
+            // Handle page refresh attempt
+            function handleBeforeUnload(e) {
+                if (screens.exam.classList.contains('active') && !state.isSubmitting) {
+                    e.preventDefault();
+                    e.returnValue = 'Your exam is in progress. Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            }
+
+            // Dismiss warning
+            function dismissWarning() {
+                elements.warningOverlay.classList.add('hidden');
+            }
+
+            // Initialize
+            async function init() {
+                await syncServerTime();
+                await checkSession();
+                startStatusPolling();
+
+                // Event listeners
+                elements.nextBtn.addEventListener('click', submitAnswer);
+                elements.dismissWarning.addEventListener('click', dismissWarning);
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                window.addEventListener('beforeunload', handleBeforeUnload);
+
+                // Prevent right-click context menu
+                document.addEventListener('contextmenu', (e) => {
+                    if (screens.exam.classList.contains('active')) {
+                        e.preventDefault();
+                    }
+                });
+
+                // Prevent keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (screens.exam.classList.contains('active')) {
+                        // Prevent Ctrl+C, Ctrl+V, Ctrl+A, F12
+                        if ((e.ctrlKey && ['c', 'v', 'a', 'u'].includes(e.key.toLowerCase())) ||
+                            e.key === 'F12') {
+                            e.preventDefault();
+                        }
+                    }
+                });
+            }
+
+            init();
+        })();
+    </script>
+</body>
+
+</html>

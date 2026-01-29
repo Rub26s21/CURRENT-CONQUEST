@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Current Conquest - ECE Professional Online Examination Platform">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Current Conquest - ECE Online Exam Platform</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+        /* Page-specific styles */
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-lg);
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .login-logo-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .login-logo-text {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .login-card h2 {
+            font-size: 1.25rem;
+            margin-bottom: var(--space-xl);
+            text-align: center;
+        }
+
+        .event-info {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-xl);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .event-info-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-sm) 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .event-info-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-light);
+        }
+
+        .admin-link {
+            display: block;
+            text-align: center;
+            margin-top: var(--space-xl);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .admin-link a {
+            color: var(--text-secondary);
+        }
+
+        .admin-link a:hover {
+            color: var(--primary-light);
+        }
+
+        .inactive-notice {
+            display: none;
+        }
+
+        .inactive-notice.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="logo">
+            <div class="logo-icon">CC</div>
+            <span class="title-gradient">Current Conquest</span>
+        </div>
+        <div class="spinner spinner-lg"></div>
+    </div>
+
+    <!-- Main Login Page -->
+    <main class="login-page" id="loginPage" style="display: none;">
+        <div class="login-container fade-in">
+            <div class="login-header">
+                <div class="login-logo">
+                    <div class="login-logo-icon">CC</div>
+                    <span class="login-logo-text title-gradient">Current Conquest</span>
+                </div>
+                <p class="login-subtitle">ECE Professional Online Examination Platform</p>
+            </div>
+
+            <!-- Event Inactive Notice -->
+            <div class="alert alert-warning inactive-notice" id="inactiveNotice">
+                <svg class="alert-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                <div>
+                    <strong>Event Not Active</strong>
+                    <p>The examination event has not started yet. Please wait for the coordinator to activate the event.
+                    </p>
+                </div>
+            </div>
+
+            <div class="login-card" id="loginCard">
+                <h2>Participant Registration</h2>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label" for="participantName">Full Name *</label>
+                        <input type="text" id="participantName" name="name" class="form-input"
+                            placeholder="Enter your full name" required autocomplete="name">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="collegeName">College Name *</label>
+                        <input type="text" id="collegeName" name="collegeName" class="form-input"
+                            placeholder="Enter your college name" required autocomplete="organization">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="phoneNumber">Phone Number *</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber" class="form-input"
+                            placeholder="Enter your phone number" required autocomplete="tel" pattern="[0-9]{10}"
+                            title="Please enter a 10-digit phone number">
+                    </div>
+
+                    <div id="formError" class="alert alert-danger" style="display: none;">
+                        <span id="errorMessage"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="loginBtn">
+                        <span id="loginBtnText">Join Examination</span>
+                        <div class="spinner" id="loginSpinner" style="display: none;"></div>
+                    </button>
+                </form>
+
+                <div class="event-info">
+                    <div class="event-info-item">
+                        <span class="event-info-icon">📋</span>
+                        <span>3 Rounds of MCQ examination</span>
+                    </div>
+                    <div class="event-info-item">
+                        <span class="event-info-icon">⏱️</span>
+                        <span>15 questions per round, 15 minutes each</span>
+                    </div>
+                    <div class="event-info-item">
+                        <span class="event-info-icon">🏆</span>
+                        <span>Top performers qualify for next rounds</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="admin-link">
+                Event Coordinator? <a href="/admin">Admin Login</a>
+            </p>
+        </div>
+    </main>
+
+    <script>
+        /**
+         * Current Conquest - Participant Login Page
+         */
+        (function () {
+            'use strict';
+
+            // DOM Elements
+            const loadingScreen = document.getElementById('loadingScreen');
+            const loginPage = document.getElementById('loginPage');
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const loginBtnText = document.getElementById('loginBtnText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            const formError = document.getElementById('formError');
+            const errorMessage = document.getElementById('errorMessage');
+            const inactiveNotice = document.getElementById('inactiveNotice');
+            const loginCard = document.getElementById('loginCard');
+
+            // API Helper
+            async function api(endpoint, options = {}) {
+                const response = await fetch(endpoint, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    credentials: 'include'
+                });
+                return response.json();
+            }
+
+            // Show error message
+            function showError(message) {
+                errorMessage.textContent = message;
+                formError.style.display = 'flex';
+            }
+
+            // Hide error message
+            function hideError() {
+                formError.style.display = 'none';
+            }
+
+            // Set loading state
+            function setLoading(loading) {
+                loginBtn.disabled = loading;
+                loginBtnText.style.display = loading ? 'none' : 'inline';
+                loginSpinner.style.display = loading ? 'inline-block' : 'none';
+            }
+
+            // Check session status
+            async function checkSession() {
+                try {
+                    const result = await api('/api/participant/session');
+
+                    if (result.success && result.authenticated) {
+                        // Already logged in, redirect to exam page
+                        window.location.href = '/exam';
+                        return;
+                    }
+
+                    // Check if event is active
+                    const healthCheck = await api('/api/health');
+
+                    // Show login page
+                    loadingScreen.style.display = 'none';
+                    loginPage.style.display = 'flex';
+
+                } catch (error) {
+                    console.error('Session check error:', error);
+                    loadingScreen.style.display = 'none';
+                    loginPage.style.display = 'flex';
+                }
+            }
+
+            // Handle login form submission
+            async function handleLogin(e) {
+                e.preventDefault();
+                hideError();
+
+                const name = document.getElementById('participantName').value.trim();
+                const collegeName = document.getElementById('collegeName').value.trim();
+                const phoneNumber = document.getElementById('phoneNumber').value.trim();
+
+                if (!name || !collegeName || !phoneNumber) {
+                    showError('Please fill in all required fields');
+                    return;
+                }
+
+                // Validate phone number (10 digits)
+                if (!/^[0-9]{10}$/.test(phoneNumber)) {
+                    showError('Please enter a valid 10-digit phone number');
+                    return;
+                }
+
+                setLoading(true);
+
+                try {
+                    const result = await api('/api/participant/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ name, collegeName, phoneNumber })
+                    });
+
+                    if (result.success) {
+                        // Redirect to exam page
+                        window.location.href = '/exam';
+                    } else {
+                        if (result.message.includes('not active')) {
+                            inactiveNotice.classList.add('show');
+                        }
+                        showError(result.message || 'Login failed. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showError('Connection error. Please check your network and try again.');
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            // Initialize
+            loginForm.addEventListener('submit', handleLogin);
+            checkSession();
+        })();
+    </script>
+</body>
+
+</html>

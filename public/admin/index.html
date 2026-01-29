@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Current Conquest - Admin Panel">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin Panel | Current Conquest</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+        /* Admin specific styles */
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .admin-sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-nav {
+            padding: var(--space-md);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-xs);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .nav-item:hover {
+            background: var(--surface-1);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary-glow);
+            color: var(--primary-light);
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .admin-main {
+            flex: 1;
+            margin-left: 260px;
+            padding: var(--space-xl);
+        }
+
+        .admin-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-xl);
+            padding-bottom: var(--space-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .admin-title {
+            font-size: 1.75rem;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: var(--space-md);
+        }
+
+        /* Login Page */
+        .admin-login {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-lg);
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Dashboard Stats */
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--surface-1);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: var(--space-md);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Round Control Panel */
+        .round-control {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+
+        .round-control-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+        }
+
+        .round-status-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.inactive {
+            background: var(--text-muted);
+            animation: none;
+        }
+
+        .status-dot.running {
+            background: var(--success);
+        }
+
+        .status-dot.completed {
+            background: var(--primary);
+            animation: none;
+        }
+
+        .round-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-lg);
+        }
+
+        .round-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            text-align: center;
+        }
+
+        .round-card.active {
+            border-color: var(--success);
+            background: hsla(145, 65%, 42%, 0.1);
+        }
+
+        .round-card.completed {
+            border-color: var(--primary);
+            background: var(--primary-glow);
+        }
+
+        .round-card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+
+        .round-card-info {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: var(--space-md);
+        }
+
+        /* Question Form */
+        .question-form-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+        }
+
+        .question-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+        }
+
+        .question-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .question-item:last-child {
+            border-bottom: none;
+        }
+
+        .question-item-number {
+            width: 32px;
+            height: 32px;
+            background: var(--surface-1);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .question-item-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .question-item-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        /* Bulk Import */
+        .bulk-import {
+            background: var(--surface-1);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            text-align: center;
+            margin-top: var(--space-xl);
+        }
+
+        /* Results Table */
+        .results-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Audit Log */
+        .audit-log-item {
+            display: flex;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .audit-log-time {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .audit-log-content {
+            flex: 1;
+        }
+
+        .audit-log-type {
+            display: inline-block;
+            padding: 2px var(--space-sm);
+            background: var(--surface-1);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: var(--space-sm);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .round-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row,
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                transform: translateX(-100%);
+            }
+
+            .admin-main {
+                margin-left: 0;
+            }
+
+            .dashboard-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Screen states */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="logo">
+            <div class="logo-icon">CC</div>
+            <span class="title-gradient">Current Conquest</span>
+        </div>
+        <div class="spinner spinner-lg"></div>
+    </div>
+
+    <!-- Admin Login -->
+    <div class="screen admin-login" id="loginScreen">
+        <div class="login-box">
+            <div class="text-center" style="margin-bottom: var(--space-2xl);">
+                <div class="logo" style="justify-content: center; margin-bottom: var(--space-lg);">
+                    <div class="logo-icon" style="width: 56px; height: 56px; font-size: 1.5rem;">CC</div>
+                </div>
+                <h1 class="title-gradient" style="font-size: 1.75rem; margin-bottom: var(--space-sm);">Current Conquest
+                </h1>
+                <p class="text-muted">Admin Panel</p>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label class="form-label" for="username">Username</label>
+                            <input type="text" id="username" class="form-input" placeholder="Enter username" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="password">Password</label>
+                            <input type="password" id="password" class="form-input" placeholder="Enter password"
+                                required>
+                        </div>
+                        <div id="loginError" class="alert alert-danger" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary btn-lg btn-block" id="loginBtn">
+                            <span id="loginBtnText">Login</span>
+                            <div class="spinner" id="loginSpinner" style="display: none;"></div>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <p class="text-center text-muted" style="margin-top: var(--space-lg);">
+                <a href="/">← Back to Participant Login</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div class="screen admin-layout" id="dashboardScreen">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">CC</div>
+                    <span>Admin</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-section="questions">
+                    <span class="nav-icon">❓</span>
+                    <span>Questions</span>
+                </div>
+                <div class="nav-item" data-section="participants">
+                    <span class="nav-icon">👥</span>
+                    <span>Participants</span>
+                </div>
+                <div class="nav-item" data-section="results">
+                    <span class="nav-icon">🏆</span>
+                    <span>Results</span>
+                </div>
+                <div class="nav-item" data-section="audit">
+                    <span class="nav-icon">📋</span>
+                    <span>Audit Logs</span>
+                </div>
+                <div class="nav-item" data-section="settings" style="margin-top: auto;">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </div>
+            </nav>
+            <div style="padding: var(--space-lg); border-top: 1px solid var(--border-color); margin-top: auto;">
+                <button class="btn btn-secondary btn-block" id="logoutBtn">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Dashboard Section -->
+            <section class="section" id="section-dashboard">
+                <div class="admin-header">
+                    <h1 class="admin-title">Dashboard</h1>
+                    <div class="admin-actions">
+                        <button class="btn btn-secondary" id="refreshDashboard">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="dashboard-stats" id="dashboardStats">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="totalParticipants">0</div>
+                        <div class="stat-label">Total Participants</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value" id="qualifiedParticipants">0</div>
+                        <div class="stat-label">Currently Qualified</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-value" id="submittedCount">0</div>
+                        <div class="stat-label">Submitted Current Round</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-value" id="currentRoundDisplay">-</div>
+                        <div class="stat-label">Current Round</div>
+                    </div>
+                </div>
+
+                <!-- Round Control -->
+                <div class="round-control">
+                    <div class="round-control-header">
+                        <h2>Event Control</h2>
+                        <div class="round-status-indicator">
+                            <span class="status-dot" id="eventStatusDot"></span>
+                            <span id="eventStatusText">Loading...</span>
+                        </div>
+                    </div>
+
+                    <div id="activateEventContainer" style="margin-bottom: var(--space-xl);">
+                        <button class="btn btn-success btn-lg" id="activateEventBtn">
+                            🚀 Activate Event
+                        </button>
+                        <p class="text-muted" style="margin-top: var(--space-sm);">
+                            Activating the event allows participants to login.
+                        </p>
+                    </div>
+
+                    <div class="round-cards" id="roundCards">
+                        <!-- Round cards will be rendered here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Questions Section -->
+            <section class="section hidden" id="section-questions">
+                <div class="admin-header">
+                    <h1 class="admin-title">Question Management</h1>
+                </div>
+
+                <!-- Round Selector -->
+                <div class="tab-nav" id="questionRoundTabs">
+                    <button class="tab-btn active" data-round="1">Round 1</button>
+                    <button class="tab-btn" data-round="2">Round 2</button>
+                    <button class="tab-btn" data-round="3">Round 3</button>
+                </div>
+
+                <!-- Question Form -->
+                <div class="question-form-container">
+                    <h3 style="margin-bottom: var(--space-lg);">Add/Edit Question</h3>
+                    <form id="questionForm">
+                        <input type="hidden" id="editQuestionId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Round</label>
+                                <select id="questionRound" class="form-input form-select">
+                                    <option value="1">Round 1</option>
+                                    <option value="2">Round 2</option>
+                                    <option value="3">Round 3</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Question Number (1-15)</label>
+                                <input type="number" id="questionNumber" class="form-input" min="1" max="15" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Question Text</label>
+                            <textarea id="questionText" class="form-input form-textarea" rows="3" required></textarea>
+                        </div>
+                        <div class="options-grid">
+                            <div class="form-group">
+                                <label class="form-label">Option A</label>
+                                <input type="text" id="optionA" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Option B</label>
+                                <input type="text" id="optionB" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Option C</label>
+                                <input type="text" id="optionC" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Option D</label>
+                                <input type="text" id="optionD" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Correct Answer</label>
+                            <select id="correctOption" class="form-input form-select" required>
+                                <option value="">Select correct option</option>
+                                <option value="A">Option A</option>
+                                <option value="B">Option B</option>
+                                <option value="C">Option C</option>
+                                <option value="D">Option D</option>
+                            </select>
+                        </div>
+                        <div id="questionFormError" class="alert alert-danger" style="display: none;"></div>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <button type="submit" class="btn btn-primary" id="saveQuestionBtn">
+                                Save Question
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="clearQuestionForm">
+                                Clear Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Questions List -->
+                <div class="question-list" id="questionsList">
+                    <div class="text-center text-muted" style="padding: var(--space-xl);">
+                        No questions added yet
+                    </div>
+                </div>
+
+                <!-- Bulk Import -->
+                <div class="bulk-import">
+                    <h4 style="margin-bottom: var(--space-md);">Bulk Import Questions</h4>
+                    <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                        Paste JSON array of questions or upload a JSON file
+                    </p>
+                    <textarea id="bulkImportData" class="form-input form-textarea" rows="5"
+                        placeholder='[{"questionText": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctOption": "A"}]'></textarea>
+                    <div
+                        style="display: flex; gap: var(--space-md); justify-content: center; margin-top: var(--space-md);">
+                        <button class="btn btn-primary" id="bulkImportBtn">Import Questions</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Participants Section -->
+            <section class="section hidden" id="section-participants">
+                <div class="admin-header">
+                    <h1 class="admin-title">Participants</h1>
+                    <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="table" id="participantsTable">
+                        <thead>
+                            <tr>
+                                <th>System ID</th>
+                                <th>Name</th>
+                                <th>College</th>
+                                <th>Phone</th>
+                                <th>Current Round</th>
+                                <th>Status</th>
+                                <th>Joined At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participantsTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="section hidden" id="section-results">
+                <div class="admin-header">
+                    <h1 class="admin-title">Results</h1>
+                </div>
+
+                <!-- Round Selector -->
+                <div class="tab-nav" id="resultsRoundTabs">
+                    <button class="tab-btn active" data-round="1">Round 1</button>
+                    <button class="tab-btn" data-round="2">Round 2</button>
+                    <button class="tab-btn" data-round="3">Round 3</button>
+                </div>
+
+                <div class="results-container">
+                    <div class="results-header">
+                        <h3>Round <span id="resultsRoundNumber">1</span> Results</h3>
+                        <button class="btn btn-primary" id="exportResultsBtn">📥 Export CSV</button>
+                    </div>
+                    <table class="table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>System ID</th>
+                                <th>Name</th>
+                                <th>College/Phone</th>
+                                <th>Score</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Select a round to view results</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Audit Logs Section -->
+            <section class="section hidden" id="section-audit">
+                <div class="admin-header">
+                    <h1 class="admin-title">Audit Logs</h1>
+                    <button class="btn btn-secondary" id="refreshAuditLogs">🔄 Refresh</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-body" id="auditLogsContainer" style="max-height: 600px; overflow-y: auto;">
+                        <div class="text-center text-muted">Loading audit logs...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="section hidden" id="section-settings">
+                <div class="admin-header">
+                    <h1 class="admin-title">Settings</h1>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: var(--space-lg); color: var(--danger);">⚠️ Danger Zone</h3>
+
+                        <div
+                            style="padding: var(--space-lg); background: hsla(0, 70%, 55%, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-lg);">
+                            <h4 style="margin-bottom: var(--space-sm);">Reset Event</h4>
+                            <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                                This will delete all participants, responses, and scores. Questions will also be
+                                removed.
+                                This action cannot be undone.
+                            </p>
+                            <button class="btn btn-danger" id="resetEventBtn">
+                                🗑️ Reset Entire Event
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal">
+            <div class="confirm-dialog">
+                <div class="confirm-icon" id="confirmIcon">⚠️</div>
+                <h2 class="confirm-title" id="confirmTitle">Confirm Action</h2>
+                <p class="confirm-message" id="confirmMessage">Are you sure you want to proceed?</p>
+                <div class="confirm-actions">
+                    <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+                    <button class="btn btn-primary" id="confirmOk">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Current Conquest - Admin Panel
+         */
+        (function () {
+            'use strict';
+
+            // State
+            let state = {
+                isAuthenticated: false,
+                currentSection: 'dashboard',
+                selectedQuestionRound: 1,
+                selectedResultsRound: 1,
+                dashboardData: null,
+                refreshInterval: null
+            };
+
+            // DOM Elements
+            const screens = {
+                loading: document.getElementById('loadingScreen'),
+                login: document.getElementById('loginScreen'),
+                dashboard: document.getElementById('dashboardScreen')
+            };
+
+            // API Helper
+            async function api(endpoint, options = {}) {
+                const response = await fetch(endpoint, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    credentials: 'include'
+                });
+                return response.json();
+            }
+
+            // Show screen
+            function showScreen(screenName) {
+                Object.values(screens).forEach(screen => {
+                    screen.classList.remove('active');
+                    screen.style.display = 'none';
+                });
+
+                if (screens[screenName]) {
+                    screens[screenName].classList.add('active');
+                    screens[screenName].style.display = screenName === 'dashboard' ? 'flex' : 'flex';
+                }
+            }
+
+            // Show section
+            function showSection(sectionName) {
+                document.querySelectorAll('.section').forEach(section => {
+                    section.classList.add('hidden');
+                });
+
+                const section = document.getElementById(`section-${sectionName}`);
+                if (section) {
+                    section.classList.remove('hidden');
+                }
+
+                // Update nav
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                    if (item.dataset.section === sectionName) {
+                        item.classList.add('active');
+                    }
+                });
+
+                state.currentSection = sectionName;
+
+                // Load section data
+                switch (sectionName) {
+                    case 'dashboard':
+                        loadDashboard();
+                        break;
+                    case 'questions':
+                        loadQuestions(state.selectedQuestionRound);
+                        break;
+                    case 'participants':
+                        loadParticipants();
+                        break;
+                    case 'results':
+                        loadResults(state.selectedResultsRound);
+                        break;
+                    case 'audit':
+                        loadAuditLogs();
+                        break;
+                }
+            }
+
+            // Confirmation modal
+            function showConfirm(title, message, icon = '⚠️') {
+                return new Promise((resolve) => {
+                    document.getElementById('confirmTitle').textContent = title;
+                    document.getElementById('confirmMessage').textContent = message;
+                    document.getElementById('confirmIcon').textContent = icon;
+
+                    const modal = document.getElementById('confirmModal');
+                    modal.classList.add('active');
+
+                    const handleConfirm = () => {
+                        modal.classList.remove('active');
+                        cleanup();
+                        resolve(true);
+                    };
+
+                    const handleCancel = () => {
+                        modal.classList.remove('active');
+                        cleanup();
+                        resolve(false);
+                    };
+
+                    const cleanup = () => {
+                        document.getElementById('confirmOk').removeEventListener('click', handleConfirm);
+                        document.getElementById('confirmCancel').removeEventListener('click', handleCancel);
+                    };
+
+                    document.getElementById('confirmOk').addEventListener('click', handleConfirm);
+                    document.getElementById('confirmCancel').addEventListener('click', handleCancel);
+                });
+            }
+
+            // Check session
+            async function checkSession() {
+                try {
+                    const result = await api('/api/admin/session');
+
+                    if (result.success && result.authenticated) {
+                        state.isAuthenticated = true;
+                        showScreen('dashboard');
+                        showSection('dashboard');
+                        startAutoRefresh();
+                    } else {
+                        showScreen('login');
+                    }
+                } catch (error) {
+                    console.error('Session check error:', error);
+                    showScreen('login');
+                }
+            }
+
+            // Login
+            async function handleLogin(e) {
+                e.preventDefault();
+
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const loginBtn = document.getElementById('loginBtn');
+                const loginError = document.getElementById('loginError');
+
+                loginBtn.disabled = true;
+                loginError.style.display = 'none';
+
+                try {
+                    const result = await api('/api/admin/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    if (result.success) {
+                        state.isAuthenticated = true;
+                        showScreen('dashboard');
+                        showSection('dashboard');
+                        startAutoRefresh();
+                    } else {
+                        loginError.textContent = result.message || 'Login failed';
+                        loginError.style.display = 'block';
+                    }
+                } catch (error) {
+                    loginError.textContent = 'Connection error. Please try again.';
+                    loginError.style.display = 'block';
+                } finally {
+                    loginBtn.disabled = false;
+                }
+            }
+
+            // Logout
+            async function handleLogout() {
+                try {
+                    await api('/api/admin/logout', { method: 'POST' });
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+
+                stopAutoRefresh();
+                state.isAuthenticated = false;
+                showScreen('login');
+            }
+
+            // Load dashboard
+            async function loadDashboard() {
+                try {
+                    const result = await api('/api/admin/dashboard');
+
+                    if (result.success) {
+                        state.dashboardData = result.data;
+                        renderDashboard(result.data);
+                    }
+                } catch (error) {
+                    console.error('Dashboard load error:', error);
+                }
+            }
+
+            // Render dashboard
+            function renderDashboard(data) {
+                // Update stats
+                document.getElementById('totalParticipants').textContent = data.participants.total;
+                document.getElementById('qualifiedParticipants').textContent = data.participants.qualified;
+                document.getElementById('submittedCount').textContent = data.participants.submittedCurrentRound;
+                document.getElementById('currentRoundDisplay').textContent =
+                    data.eventState.currentRound === 0 ? 'Not Started' : `Round ${data.eventState.currentRound}`;
+
+                // Update event status
+                const statusDot = document.getElementById('eventStatusDot');
+                const statusText = document.getElementById('eventStatusText');
+                const activateContainer = document.getElementById('activateEventContainer');
+
+                if (!data.eventState.eventActive) {
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = 'Event Not Active';
+                    activateContainer.style.display = 'block';
+                } else {
+                    activateContainer.style.display = 'none';
+
+                    if (data.eventState.roundStatus === 'running') {
+                        statusDot.className = 'status-dot running';
+                        statusText.textContent = `Round ${data.eventState.currentRound} Running`;
+                    } else if (data.eventState.roundStatus === 'completed') {
+                        statusDot.className = 'status-dot completed';
+                        statusText.textContent = `Round ${data.eventState.currentRound} Completed`;
+                    } else {
+                        statusDot.className = 'status-dot inactive';
+                        statusText.textContent = 'Waiting to Start Round';
+                    }
+                }
+
+                // Render round cards
+                renderRoundCards(data);
+            }
+
+            // Render round cards
+            function renderRoundCards(data) {
+                const container = document.getElementById('roundCards');
+                container.innerHTML = '';
+
+                for (let i = 1; i <= 3; i++) {
+                    const round = data.rounds.find(r => r.round_number === i) || {};
+                    const questionCount = data.questionsPerRound[i] || 0;
+                    const isActive = data.eventState.currentRound === i && data.eventState.roundStatus === 'running';
+                    const isCompleted = round.status === 'completed';
+                    const canStart = data.eventState.eventActive &&
+                        !isActive &&
+                        !isCompleted &&
+                        questionCount >= 15 &&
+                        (i === 1 || (data.rounds.find(r => r.round_number === i - 1)?.shortlisting_completed));
+
+                    const card = document.createElement('div');
+                    card.className = `round-card ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
+                    card.innerHTML = `
+                        <h3 class="round-card-title">Round ${i}</h3>
+                        <div class="round-card-info">
+                            <p>Questions: ${questionCount}/15</p>
+                            <p>Duration: 15 minutes</p>
+                            <p>Status: ${isCompleted ? 'Completed' : isActive ? 'Running' : 'Pending'}</p>
+                        </div>
+                        ${isActive ? `
+                            <button class="btn btn-danger btn-sm" onclick="endRound(${i})">End Round</button>
+                        ` : isCompleted ? `
+                            ${round.shortlisting_completed ? `
+                                <span class="badge badge-success">Shortlisted</span>
+                            ` : `
+                                <button class="btn btn-warning btn-sm" onclick="shortlistRound(${i})">Shortlist</button>
+                            `}
+                        ` : canStart ? `
+                            <button class="btn btn-success btn-sm" onclick="startRound(${i})">Start Round</button>
+                        ` : `
+                            <span class="badge badge-neutral">${questionCount < 15 ? 'Add Questions' : 'Waiting'}</span>
+                        `}
+                    `;
+                    container.appendChild(card);
+                }
+            }
+
+            // Activate event
+            async function activateEvent() {
+                const confirmed = await showConfirm(
+                    'Activate Event',
+                    'This will allow participants to login. Are you sure?',
+                    '🚀'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/admin/event/activate', { method: 'POST' });
+
+                    if (result.success) {
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to activate event');
+                    }
+                } catch (error) {
+                    console.error('Activate event error:', error);
+                    alert('Failed to activate event');
+                }
+            }
+
+            // Start round
+            window.startRound = async function (roundNumber) {
+                const confirmed = await showConfirm(
+                    `Start Round ${roundNumber}`,
+                    `This will start Round ${roundNumber} and the 15-minute timer will begin. All qualified participants will be able to take the exam. Continue?`,
+                    '▶️'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/admin/round/start', {
+                        method: 'POST',
+                        body: JSON.stringify({ roundNumber })
+                    });
+
+                    if (result.success) {
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to start round');
+                    }
+                } catch (error) {
+                    console.error('Start round error:', error);
+                    alert('Failed to start round');
+                }
+            };
+
+            // End round
+            window.endRound = async function (roundNumber) {
+                const confirmed = await showConfirm(
+                    `End Round ${roundNumber}`,
+                    'This will end the round and auto-submit all pending exams. Continue?',
+                    '⏹️'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/admin/round/end', { method: 'POST' });
+
+                    if (result.success) {
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to end round');
+                    }
+                } catch (error) {
+                    console.error('End round error:', error);
+                    alert('Failed to end round');
+                }
+            };
+
+            // Shortlist round
+            window.shortlistRound = async function (roundNumber) {
+                const confirmed = await showConfirm(
+                    `Shortlist Round ${roundNumber}`,
+                    'This will calculate scores and shortlist participants for the next round. This cannot be undone. Continue?',
+                    '📊'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/admin/round/shortlist', {
+                        method: 'POST',
+                        body: JSON.stringify({ roundNumber })
+                    });
+
+                    if (result.success) {
+                        alert(`Shortlisting completed!`);
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to shortlist');
+                    }
+                } catch (error) {
+                    console.error('Shortlist error:', error);
+                    alert('Failed to shortlist');
+                }
+            };
+
+            // Load questions
+            async function loadQuestions(roundNumber) {
+                try {
+                    const result = await api(`/api/questions/round/${roundNumber}`);
+
+                    if (result.success) {
+                        renderQuestions(result.data);
+                    }
+                } catch (error) {
+                    console.error('Load questions error:', error);
+                }
+            }
+
+            // Render questions
+            function renderQuestions(questions) {
+                const container = document.getElementById('questionsList');
+
+                if (!questions || questions.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted" style="padding: var(--space-xl);">
+                            No questions added for this round yet
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = questions.map(q => `
+                    <div class="question-item">
+                        <span class="question-item-number">${q.question_number}</span>
+                        <span class="question-item-text">${q.question_text}</span>
+                        <span class="badge badge-primary">Answer: ${q.correct_option}</span>
+                        <div class="question-item-actions">
+                            <button class="btn btn-sm btn-secondary" onclick="editQuestion('${q.id}', ${JSON.stringify(q).replace(/'/g, "\\'")})">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${q.id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Edit question
+            window.editQuestion = function (id, question) {
+                document.getElementById('editQuestionId').value = id;
+                document.getElementById('questionRound').value = question.round_number;
+                document.getElementById('questionNumber').value = question.question_number;
+                document.getElementById('questionText').value = question.question_text;
+                document.getElementById('optionA').value = question.option_a;
+                document.getElementById('optionB').value = question.option_b;
+                document.getElementById('optionC').value = question.option_c;
+                document.getElementById('optionD').value = question.option_d;
+                document.getElementById('correctOption').value = question.correct_option;
+
+                document.getElementById('questionForm').scrollIntoView({ behavior: 'smooth' });
+            };
+
+            // Delete question
+            window.deleteQuestion = async function (id) {
+                const confirmed = await showConfirm(
+                    'Delete Question',
+                    'Are you sure you want to delete this question?',
+                    '🗑️'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api(`/api/questions/${id}`, { method: 'DELETE' });
+
+                    if (result.success) {
+                        loadQuestions(state.selectedQuestionRound);
+                    } else {
+                        alert(result.message || 'Failed to delete question');
+                    }
+                } catch (error) {
+                    console.error('Delete question error:', error);
+                    alert('Failed to delete question');
+                }
+            };
+
+            // Save question
+            async function saveQuestion(e) {
+                e.preventDefault();
+
+                const data = {
+                    roundNumber: parseInt(document.getElementById('questionRound').value),
+                    questionNumber: parseInt(document.getElementById('questionNumber').value),
+                    questionText: document.getElementById('questionText').value,
+                    optionA: document.getElementById('optionA').value,
+                    optionB: document.getElementById('optionB').value,
+                    optionC: document.getElementById('optionC').value,
+                    optionD: document.getElementById('optionD').value,
+                    correctOption: document.getElementById('correctOption').value
+                };
+
+                const errorDiv = document.getElementById('questionFormError');
+                errorDiv.style.display = 'none';
+
+                try {
+                    const result = await api('/api/questions/add', {
+                        method: 'POST',
+                        body: JSON.stringify(data)
+                    });
+
+                    if (result.success) {
+                        clearQuestionForm();
+                        loadQuestions(data.roundNumber);
+                        state.selectedQuestionRound = data.roundNumber;
+
+                        // Update tab
+                        document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                            if (parseInt(btn.dataset.round) === data.roundNumber) {
+                                btn.classList.add('active');
+                            }
+                        });
+                    } else {
+                        errorDiv.textContent = result.message || 'Failed to save question';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Save question error:', error);
+                    errorDiv.textContent = 'Failed to save question';
+                    errorDiv.style.display = 'block';
+                }
+            }
+
+            // Clear question form
+            function clearQuestionForm() {
+                document.getElementById('questionForm').reset();
+                document.getElementById('editQuestionId').value = '';
+            }
+
+            // Bulk import
+            async function bulkImport() {
+                const data = document.getElementById('bulkImportData').value;
+                const roundNumber = state.selectedQuestionRound;
+
+                if (!data.trim()) {
+                    alert('Please enter JSON data');
+                    return;
+                }
+
+                let questions;
+                try {
+                    questions = JSON.parse(data);
+                } catch (e) {
+                    alert('Invalid JSON format');
+                    return;
+                }
+
+                const confirmed = await showConfirm(
+                    'Bulk Import',
+                    `This will replace all questions in Round ${roundNumber} with ${questions.length} new questions. Continue?`,
+                    '📥'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/questions/bulk-add', {
+                        method: 'POST',
+                        body: JSON.stringify({ roundNumber, questions })
+                    });
+
+                    if (result.success) {
+                        document.getElementById('bulkImportData').value = '';
+                        loadQuestions(roundNumber);
+                        alert(result.message);
+                    } else {
+                        alert(result.message || 'Import failed');
+                    }
+                } catch (error) {
+                    console.error('Bulk import error:', error);
+                    alert('Import failed');
+                }
+            }
+
+            // Load participants
+            async function loadParticipants() {
+                try {
+                    const result = await api('/api/admin/participants');
+
+                    if (result.success) {
+                        renderParticipants(result.data);
+                    }
+                } catch (error) {
+                    console.error('Load participants error:', error);
+                }
+            }
+
+            // Render participants
+            function renderParticipants(participants) {
+                const tbody = document.getElementById('participantsTableBody');
+
+                if (!participants || participants.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">No participants yet</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = participants.map(p => `
+                    <tr>
+                        <td><code>${p.system_id}</code></td>
+                        <td>${p.name}</td>
+                        <td>${p.college_name || '-'}</td>
+                        <td>${p.phone_number || '-'}</td>
+                        <td>Round ${p.current_round}</td>
+                        <td>
+                            ${p.is_disqualified ?
+                        '<span class="badge badge-danger">Disqualified</span>' :
+                        p.is_qualified ?
+                            '<span class="badge badge-success">Qualified</span>' :
+                            '<span class="badge badge-neutral">Eliminated</span>'
+                    }
+                        </td>
+                        <td>${new Date(p.created_at).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Load results
+            async function loadResults(roundNumber) {
+                document.getElementById('resultsRoundNumber').textContent = roundNumber;
+
+                try {
+                    const result = await api(`/api/admin/results/${roundNumber}`);
+
+                    if (result.success) {
+                        renderResults(result.data.results);
+                    }
+                } catch (error) {
+                    console.error('Load results error:', error);
+                }
+            }
+
+            // Render results
+            function renderResults(results) {
+                const tbody = document.getElementById('resultsTableBody');
+
+                if (!results || results.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">No results available for this round</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = results.map(r => `
+                    <tr>
+                        <td><strong>#${r.rank || '-'}</strong></td>
+                        <td><code>${r.participants?.system_id || '-'}</code></td>
+                        <td>${r.participants?.name || '-'}</td>
+                        <td>${r.participants?.college_name || '-'}</td>
+                        <td><strong>${r.correct_answers}/15</strong></td>
+                        <td>${r.time_taken_seconds ? formatTime(r.time_taken_seconds) : '-'}</td>
+                        <td>
+                            ${r.qualified_for_next ?
+                        '<span class="badge badge-success">Qualified</span>' :
+                        '<span class="badge badge-neutral">Eliminated</span>'
+                    }
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Format time
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins}m ${secs}s`;
+            }
+
+            // Export results
+            async function exportResults() {
+                const roundNumber = state.selectedResultsRound;
+                window.location.href = `/api/admin/export/${roundNumber}`;
+            }
+
+            // Load audit logs
+            async function loadAuditLogs() {
+                try {
+                    const result = await api('/api/admin/audit-logs');
+
+                    if (result.success) {
+                        renderAuditLogs(result.data);
+                    }
+                } catch (error) {
+                    console.error('Load audit logs error:', error);
+                }
+            }
+
+            // Render audit logs
+            function renderAuditLogs(logs) {
+                const container = document.getElementById('auditLogsContainer');
+
+                if (!logs || logs.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted">No audit logs available</div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = logs.map(log => `
+                    <div class="audit-log-item">
+                        <div class="audit-log-time">${new Date(log.created_at).toLocaleString()}</div>
+                        <div class="audit-log-content">
+                            <span class="audit-log-type">${log.event_type}</span>
+                            ${log.participants ? `<strong>${log.participants.name}</strong> (${log.participants.system_id}): ` : ''}
+                            ${log.event_description}
+                            ${log.round_number ? ` <span class="badge badge-neutral">Round ${log.round_number}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Reset event
+            async function resetEvent() {
+                const confirmed = await showConfirm(
+                    '⚠️ Reset Entire Event',
+                    'This will DELETE ALL participants, responses, scores, and questions. This action CANNOT be undone. Are you absolutely sure?',
+                    '🗑️'
+                );
+
+                if (!confirmed) return;
+
+                // Double confirmation
+                const doubleConfirmed = await showConfirm(
+                    'Final Confirmation',
+                    'Type "RESET" mentally and click confirm to proceed with the reset.',
+                    '⚠️'
+                );
+
+                if (!doubleConfirmed) return;
+
+                try {
+                    const result = await api('/api/admin/reset-event', {
+                        method: 'POST',
+                        body: JSON.stringify({ confirmReset: 'RESET_ALL_DATA' })
+                    });
+
+                    if (result.success) {
+                        alert('Event has been reset successfully');
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Reset failed');
+                    }
+                } catch (error) {
+                    console.error('Reset error:', error);
+                    alert('Reset failed');
+                }
+            }
+
+            // Auto refresh
+            function startAutoRefresh() {
+                state.refreshInterval = setInterval(() => {
+                    if (state.currentSection === 'dashboard') {
+                        loadDashboard();
+                    }
+                }, 5000);
+            }
+
+            function stopAutoRefresh() {
+                if (state.refreshInterval) {
+                    clearInterval(state.refreshInterval);
+                }
+            }
+
+            // Event listeners
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            document.getElementById('activateEventBtn').addEventListener('click', activateEvent);
+            document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
+            document.getElementById('questionForm').addEventListener('submit', saveQuestion);
+            document.getElementById('clearQuestionForm').addEventListener('click', clearQuestionForm);
+            document.getElementById('bulkImportBtn').addEventListener('click', bulkImport);
+            document.getElementById('refreshParticipants').addEventListener('click', loadParticipants);
+            document.getElementById('exportResultsBtn').addEventListener('click', exportResults);
+            document.getElementById('refreshAuditLogs').addEventListener('click', loadAuditLogs);
+            document.getElementById('resetEventBtn').addEventListener('click', resetEvent);
+
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    showSection(item.dataset.section);
+                });
+            });
+
+            // Question round tabs
+            document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.selectedQuestionRound = parseInt(btn.dataset.round);
+                    document.getElementById('questionRound').value = btn.dataset.round;
+                    loadQuestions(state.selectedQuestionRound);
+                });
+            });
+
+            // Results round tabs
+            document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.selectedResultsRound = parseInt(btn.dataset.round);
+                    loadResults(state.selectedResultsRound);
+                });
+            });
+
+            // Initialize
+            checkSession();
+        })();
+    </script>
+</body>
+
+</html>
