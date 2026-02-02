@@ -1149,7 +1149,8 @@
                         loginError.style.display = 'block';
                     }
                 } catch (error) {
-                    loginError.textContent = 'Connection error. Please try again.';
+                    console.error('Login error details:', error);
+                    loginError.textContent = 'Connection error: ' + (error.message || 'Check browser console');
                     loginError.style.display = 'block';
                 } finally {
                     loginBtn.disabled = false;
