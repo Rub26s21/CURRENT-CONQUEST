@@ -130,20 +130,10 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║     QUIZ CONQUEST - ECE Online Exam Platform                 ║
-║                                                              ║
-║     Server running on:                                       ║
-║     → Local:   http://localhost:${PORT}                        ║
-║     → Network: http://<YOUR_IP>:${PORT}                        ║
-║                                                              ║
-║     Admin Panel: http://localhost:${PORT}/admin                ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-    `);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+    });
+}
 
 module.exports = app;
