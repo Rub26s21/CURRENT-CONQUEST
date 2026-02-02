@@ -1,5 +1,5 @@
 /**
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  * Main Stylesheet
  */
 
@@ -18,7 +18,7 @@
     --accent-hue: 160;
     --accent: hsl(var(--accent-hue), 70%, 45%);
     --accent-light: hsl(var(--accent-hue), 70%, 55%);
-    
+
     /* Status Colors */
     --success: hsl(145, 65%, 42%);
     --success-light: hsl(145, 65%, 52%);
@@ -33,32 +33,32 @@
     --bg-tertiary: hsl(220, 16%, 16%);
     --bg-card: hsl(220, 18%, 14%);
     --bg-hover: hsl(220, 18%, 18%);
-    
+
     /* Surface Colors */
     --surface-1: hsla(220, 20%, 20%, 0.6);
     --surface-2: hsla(220, 20%, 25%, 0.4);
     --surface-glass: hsla(220, 20%, 15%, 0.8);
-    
+
     /* Text Colors */
     --text-primary: hsl(220, 15%, 95%);
     --text-secondary: hsl(220, 10%, 70%);
     --text-muted: hsl(220, 10%, 50%);
     --text-inverse: hsl(220, 20%, 10%);
-    
+
     /* Borders */
     --border-color: hsla(220, 20%, 30%, 0.5);
     --border-light: hsla(220, 20%, 40%, 0.3);
-    
+
     /* Shadows */
     --shadow-sm: 0 2px 4px hsla(0, 0%, 0%, 0.2);
     --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
     --shadow-lg: 0 8px 24px hsla(0, 0%, 0%, 0.4);
     --shadow-glow: 0 0 20px var(--primary-glow);
-    
+
     /* Typography */
     --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-    
+
     /* Spacing */
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
@@ -66,14 +66,14 @@
     --space-lg: 1.5rem;
     --space-xl: 2rem;
     --space-2xl: 3rem;
-    
+
     /* Border Radius */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
     --radius-full: 9999px;
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-base: 250ms ease;
@@ -115,7 +115,7 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
+    background:
         radial-gradient(ellipse at 20% 20%, hsla(var(--primary-hue), 50%, 30%, 0.1) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, hsla(var(--accent-hue), 50%, 30%, 0.08) 0%, transparent 50%);
     pointer-events: none;
@@ -142,7 +142,9 @@ button {
     cursor: pointer;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
     font-family: inherit;
 }
 
@@ -203,18 +205,40 @@ input, textarea, select {
 /* ============================================
    TYPOGRAPHY
    ============================================ */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-weight: 600;
     line-height: 1.3;
     color: var(--text-primary);
 }
 
-h1 { font-size: 2.5rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.5rem; }
-h4 { font-size: 1.25rem; }
-h5 { font-size: 1.1rem; }
-h6 { font-size: 1rem; }
+h1 {
+    font-size: 2.5rem;
+}
+
+h2 {
+    font-size: 2rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+h4 {
+    font-size: 1.25rem;
+}
+
+h5 {
+    font-size: 1.1rem;
+}
+
+h6 {
+    font-size: 1rem;
+}
 
 .title-gradient {
     background: linear-gradient(135deg, var(--primary-light), var(--accent));
@@ -596,7 +620,9 @@ h6 { font-size: 1rem; }
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .loading-screen {
@@ -689,8 +715,15 @@ h6 { font-size: 1rem; }
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* Question Card */
@@ -755,12 +788,12 @@ h6 { font-size: 1rem; }
     border-color: var(--primary);
 }
 
-.option-input:checked + .option-label {
+.option-input:checked+.option-label {
     background: var(--primary-glow);
     border-color: var(--primary);
 }
 
-.option-input:focus + .option-label {
+.option-input:focus+.option-label {
     box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
@@ -779,7 +812,7 @@ h6 { font-size: 1rem; }
     transition: all var(--transition-fast);
 }
 
-.option-input:checked + .option-label .option-indicator {
+.option-input:checked+.option-label .option-indicator {
     background: var(--primary);
     border-color: var(--primary);
     color: white;
@@ -894,9 +927,17 @@ h6 { font-size: 1rem; }
         padding: 0 var(--space-md);
     }
 
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; }
-    h3 { font-size: 1.25rem; }
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
 
     .question-card {
         padding: var(--space-lg);
@@ -939,6 +980,7 @@ h6 { font-size: 1rem; }
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -954,6 +996,7 @@ h6 { font-size: 1rem; }
         opacity: 0;
         transform: translateX(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -1058,6 +1101,7 @@ h6 { font-size: 1rem; }
     from {
         transform: translateY(-100%);
     }
+
     to {
         transform: translateY(0);
     }

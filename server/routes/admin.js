@@ -1,6 +1,6 @@
 /**
  * Admin Routes
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  */
 
 const express = require('express');
@@ -75,46 +75,11 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check database for other admins
-        const { data: admin, error } = await supabase
-            .from('admins')
-            .select('*')
-            .eq('username', username)
-            .single();
-
-        if (error || !admin) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
-
-        // Verify password
-        const validPassword = await bcrypt.compare(password, admin.password_hash);
-        if (!validPassword) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
-
-        // Update last login
-        await supabase
-            .from('admins')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', admin.id);
-
-        // Set session
-        req.session.adminId = admin.id;
-        req.session.adminUsername = admin.username;
-        req.session.isAdmin = true;
-
-        await auditLog(null, admin.id, 'ADMIN_LOGIN', 'Admin logged in successfully', null, req);
-
-        res.json({
-            success: true,
-            message: 'Login successful',
-            admin: { username: admin.username }
+        // Check database for other admins - DISABLED
+        // Only the configured admin user can login
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid credentials'
         });
     } catch (error) {
         console.error('Admin login error:', error);
@@ -836,6 +801,46 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to reset event'
+        });
+    }
+});
+
+/**
+ * POST /api/admin/round/update
+ * Update round settings (duration)
+ */
+router.post('/round/update', requireAdmin, async (req, res) => {
+    try {
+        const { roundNumber, durationMinutes } = req.body;
+        console.log('Update round request:', { roundNumber, durationMinutes });
+
+        if (!roundNumber || !durationMinutes) {
+            return res.status(400).json({
+                success: false,
+                message: 'Round number and duration are required'
+            });
+        }
+
+        const { error } = await supabase
+            .from('rounds')
+            .update({
+                duration_minutes: parseInt(durationMinutes)
+            })
+            .eq('round_number', roundNumber);
+
+        if (error) throw error;
+
+        await auditLog(null, req.admin.id, 'ROUND_UPDATED', `Round ${roundNumber} settings updated`, { durationMinutes }, req);
+
+        res.json({
+            success: true,
+            message: 'Round settings updated successfully'
+        });
+    } catch (error) {
+        console.error('Update round error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update round settings'
         });
     }
 });

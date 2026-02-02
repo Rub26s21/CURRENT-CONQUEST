@@ -1,6 +1,6 @@
 /**
  * Server Entry Point
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  */
 
 require('dotenv').config();
@@ -15,6 +15,7 @@ const { session, sessionConfig } = require('./config/session');
 const adminRoutes = require('./routes/admin');
 const questionRoutes = require('./routes/questions');
 const participantRoutes = require('./routes/participant');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,12 +71,13 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/admin', adminRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/participant', participantRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
-        message: 'Current Conquest API is running',
+        message: 'Quiz Conquest API is running',
         timestamp: new Date().toISOString()
     });
 });
@@ -132,7 +134,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║     CURRENT CONQUEST - ECE Online Exam Platform              ║
+║     QUIZ CONQUEST - ECE Online Exam Platform                 ║
 ║                                                              ║
 ║     Server running on:                                       ║
 ║     → Local:   http://localhost:${PORT}                        ║

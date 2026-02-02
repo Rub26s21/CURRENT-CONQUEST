@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Current Conquest - Admin Panel">
+    <meta name="description" content="Quiz Conquest - Admin Panel">
     <meta name="robots" content="noindex, nofollow">
-    <title>Admin Panel | Current Conquest</title>
+    <title>Admin Panel | Quiz Conquest</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +17,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/3d-theme.css">
 
     <style>
         /* Admin specific styles */
@@ -397,11 +398,23 @@
 </head>
 
 <body>
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Floating Orbs for CSS animations -->
+    <div class="floating-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="cyber-grid"></div>
+    <div class="hex-pattern"></div>
+
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="logo">
-            <div class="logo-icon">CC</div>
-            <span class="title-gradient">Current Conquest</span>
+            <div class="logo-icon">QC</div>
+            <span class="title-gradient">Quiz Conquest</span>
         </div>
         <div class="spinner spinner-lg"></div>
     </div>
@@ -411,9 +424,9 @@
         <div class="login-box">
             <div class="text-center" style="margin-bottom: var(--space-2xl);">
                 <div class="logo" style="justify-content: center; margin-bottom: var(--space-lg);">
-                    <div class="logo-icon" style="width: 56px; height: 56px; font-size: 1.5rem;">CC</div>
+                    <div class="logo-icon" style="width: 56px; height: 56px; font-size: 1.5rem;">QC</div>
                 </div>
-                <h1 class="title-gradient" style="font-size: 1.75rem; margin-bottom: var(--space-sm);">Current Conquest
+                <h1 class="title-gradient" style="font-size: 1.75rem; margin-bottom: var(--space-sm);">Quiz Conquest
                 </h1>
                 <p class="text-muted">Admin Panel</p>
             </div>
@@ -451,7 +464,7 @@
         <aside class="admin-sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <div class="logo-icon">CC</div>
+                    <div class="logo-icon">QC</div>
                     <span>Admin</span>
                 </div>
             </div>
@@ -476,6 +489,10 @@
                     <span class="nav-icon">📋</span>
                     <span>Audit Logs</span>
                 </div>
+                <div class="nav-item" data-section="file-upload">
+                    <span class="nav-icon">📁</span>
+                    <span>File Upload</span>
+                </div>
                 <div class="nav-item" data-section="settings" style="margin-top: auto;">
                     <span class="nav-icon">⚙️</span>
                     <span>Settings</span>
@@ -488,6 +505,59 @@
 
         <!-- Main Content -->
         <main class="admin-main">
+            <!-- Settings Section -->
+            <section class="section hidden" id="section-settings">
+                <div class="admin-header">
+                    <h1 class="admin-title">⚙️ Event Settings</h1>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h3>Round Configuration</h3>
+                        <p class="text-muted" style="margin-bottom: var(--space-lg);">Configure duration and settings
+                            for each round.</p>
+
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Round</th>
+                                        <th>Duration (Minutes)</th>
+                                        <th>Question Count</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Round 1</td>
+                                        <td><input type="number" id="duration-r1" class="form-input"
+                                                style="width: 80px;" value="15"></td>
+                                        <td>15 questions</td>
+                                        <td><button class="btn btn-sm btn-primary update-round-btn"
+                                                data-round="1">Update</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Round 2</td>
+                                        <td><input type="number" id="duration-r2" class="form-input"
+                                                style="width: 80px;" value="30"></td>
+                                        <td>15 questions</td>
+                                        <td><button class="btn btn-sm btn-primary update-round-btn"
+                                                data-round="2">Update</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Round 3</td>
+                                        <td><input type="number" id="duration-r3" class="form-input"
+                                                style="width: 80px;" value="45"></td>
+                                        <td>15 questions</td>
+                                        <td><button class="btn btn-sm btn-primary update-round-btn"
+                                                data-round="3">Update</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
             <!-- Dashboard Section -->
             <section class="section" id="section-dashboard">
                 <div class="admin-header">
@@ -728,6 +798,144 @@
                 </div>
             </section>
 
+            <!-- File Upload Section -->
+            <section class="section hidden" id="section-file-upload">
+                <div class="admin-header">
+                    <h1 class="admin-title">📁 File Upload</h1>
+                    <div class="admin-actions">
+                        <span class="text-muted" style="font-size: 0.9rem; margin-right: 10px;">Download
+                            Template:</span>
+                        <a href="/api/upload/template?format=excel" class="btn btn-sm btn-secondary">📊 Excel</a>
+                        <a href="/api/upload/template?format=word" class="btn btn-sm btn-secondary">📝 Word</a>
+                        <a href="/api/upload/template?format=pdf" class="btn btn-sm btn-secondary">📄 PDF</a>
+                        <a href="/api/upload/template?format=ppt" class="btn btn-sm btn-secondary">📑 PPT</a>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: var(--space-lg);">Import Questions from File</h3>
+                        <p class="text-muted" style="margin-bottom: var(--space-xl);">
+                            Upload questions from Excel, PDF, Word, or PowerPoint files.
+                            Maximum 15 questions per round will be imported.
+                        </p>
+
+                        <div class="form-group">
+                            <label class="form-label">Select Round</label>
+                            <select id="fileUploadRound" class="form-input" style="max-width: 200px;">
+                                <option value="1">Round 1</option>
+                                <option value="2">Round 2</option>
+                                <option value="3">Round 3</option>
+                            </select>
+                        </div>
+
+                        <div class="file-upload-area" id="fileDropZone" style="
+                            border: 2px dashed rgba(255, 100, 60, 0.4);
+                            border-radius: var(--radius-xl);
+                            padding: var(--space-3xl);
+                            text-align: center;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            background: rgba(255, 100, 60, 0.05);
+                            margin-bottom: var(--space-xl);
+                        ">
+                            <div style="font-size: 3rem; margin-bottom: var(--space-lg);">📤</div>
+                            <h3 style="margin-bottom: var(--space-md);">Drag & Drop File Here</h3>
+                            <p class="text-muted" style="margin-bottom: var(--space-lg);">or click to browse</p>
+                            <input type="file" id="fileUploadInput" style="display: none;"
+                                accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt">
+                            <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
+                                <span class="badge badge-primary">📊 Excel</span>
+                                <span class="badge badge-primary">📄 PDF</span>
+                                <span class="badge badge-primary">📝 Word</span>
+                                <span class="badge badge-primary">📑 PowerPoint</span>
+                            </div>
+                        </div>
+
+                        <div id="fileUploadProgress" style="display: none; margin-bottom: var(--space-xl);">
+                            <div style="display: flex; align-items: center; gap: var(--space-md);">
+                                <div class="spinner"></div>
+                                <span id="fileUploadStatus">Processing file...</span>
+                            </div>
+                        </div>
+
+                        <div id="fileUploadResult" style="display: none; margin-bottom: var(--space-xl);">
+                            <div class="alert alert-success" id="fileUploadSuccess" style="display: none;"></div>
+                            <div class="alert alert-danger" id="fileUploadError" style="display: none;"></div>
+                        </div>
+
+                        <div id="uploadedQuestionsPreview" style="display: none;">
+                            <h4 style="margin-bottom: var(--space-lg);">📋 Imported Questions Preview</h4>
+                            <div class="table-container">
+                                <table class="table" id="previewTable">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Question Preview</th>
+                                            <th>Answer</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: var(--space-xl);">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: var(--space-lg);">📖 Supported Formats</h3>
+
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-xl);">
+                            <div>
+                                <h4 style="color: #10b981; margin-bottom: var(--space-md);">📊 Excel Files (.xlsx, .xls)
+                                </h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Use columns: <strong>Question, Option A, Option B, Option C, Option D,
+                                        Correct</strong><br>
+                                    The correct answer should be A, B, C, or D.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 style="color: #3b82f6; margin-bottom: var(--space-md);">📄 PDF Files (.pdf)</h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Format each question with options labeled A), B), C), D) and include "Answer: X" at
+                                    the end.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 style="color: #8b5cf6; margin-bottom: var(--space-md);">📝 Word Files (.docx)</h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Same format as PDF. Each question followed by options and answer.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 style="color: #f59e0b; margin-bottom: var(--space-md);">📑 PowerPoint Files (.pptx)
+                                </h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    One question per slide with options and answer indicated.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            style="margin-top: var(--space-xl); padding: var(--space-lg); background: rgba(255, 180, 80, 0.1); border-radius: var(--radius-lg); border: 1px solid rgba(255, 180, 80, 0.3);">
+                            <h4 style="color: #f59e0b; margin-bottom: var(--space-sm);">💡 Tips for Best Results</h4>
+                            <ul class="text-muted" style="margin: 0; padding-left: var(--space-xl); font-size: 0.9rem;">
+                                <li>For Excel: Download the template and fill in your questions</li>
+                                <li>For PDF/Word: Use clear formatting with labeled options (A, B, C, D)</li>
+                                <li>Include "Answer: X" or "Correct: X" for each question</li>
+                                <li>Maximum 15 questions per round will be imported</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Settings Section -->
             <section class="section hidden" id="section-settings">
                 <div class="admin-header">
@@ -773,7 +981,7 @@
 
     <script>
         /**
-         * Current Conquest - Admin Panel
+         * Quiz Conquest - Admin Panel
          */
         (function () {
             'use strict';
@@ -805,7 +1013,7 @@
                     },
                     credentials: 'include'
                 });
-                return response.json();
+                if (!response.ok) { const text = await response.text(); throw new Error(text || response.statusText); } return response.json();
             }
 
             // Show screen
@@ -1334,6 +1542,131 @@
                 }
             }
 
+            // ============================================
+            // FILE UPLOAD FUNCTIONALITY
+            // ============================================
+
+            function initFileUpload() {
+                const dropZone = document.getElementById('fileDropZone');
+                const fileInput = document.getElementById('fileUploadInput');
+
+                if (!dropZone || !fileInput) return;
+
+                // Click to browse
+                dropZone.addEventListener('click', () => fileInput.click());
+
+                // File selected
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileUpload(e.target.files[0]);
+                    }
+                });
+
+                // Drag and drop
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.style.borderColor = 'rgba(255, 100, 60, 0.8)';
+                    dropZone.style.background = 'rgba(255, 100, 60, 0.15)';
+                });
+
+                dropZone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    dropZone.style.borderColor = 'rgba(255, 100, 60, 0.4)';
+                    dropZone.style.background = 'rgba(255, 100, 60, 0.05)';
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.style.borderColor = 'rgba(255, 100, 60, 0.4)';
+                    dropZone.style.background = 'rgba(255, 100, 60, 0.05)';
+
+                    if (e.dataTransfer.files.length > 0) {
+                        handleFileUpload(e.dataTransfer.files[0]);
+                    }
+                });
+            }
+
+            async function handleFileUpload(file) {
+                const roundNumber = document.getElementById('fileUploadRound').value;
+                const progressDiv = document.getElementById('fileUploadProgress');
+                const statusSpan = document.getElementById('fileUploadStatus');
+                const resultDiv = document.getElementById('fileUploadResult');
+                const successDiv = document.getElementById('fileUploadSuccess');
+                const errorDiv = document.getElementById('fileUploadError');
+                const previewDiv = document.getElementById('uploadedQuestionsPreview');
+                const previewBody = document.getElementById('previewTableBody');
+
+                // Validate file type
+                const allowedExts = ['.xlsx', '.xls', '.pdf', '.docx', '.doc', '.pptx', '.ppt'];
+                const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+
+                if (!allowedExts.includes(ext)) {
+                    alert('Invalid file type. Allowed: Excel, PDF, Word, PowerPoint');
+                    return;
+                }
+
+                // Show progress
+                progressDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                previewDiv.style.display = 'none';
+                statusSpan.textContent = `Uploading and processing ${file.name}...`;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('roundNumber', roundNumber);
+
+                    const response = await fetch('/api/upload/questions', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+
+                    const result = await response.json();
+
+                    progressDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+
+                    if (result.success) {
+                        successDiv.style.display = 'block';
+                        errorDiv.style.display = 'none';
+                        successDiv.innerHTML = `
+                            <strong>✅ Success!</strong><br>
+                            ${result.message}<br>
+                            <small>Parsed: ${result.data.totalParsed} questions, Imported: ${result.data.totalImported} questions</small>
+                        `;
+
+                        // Show preview
+                        previewDiv.style.display = 'block';
+                        previewBody.innerHTML = result.data.questions.map(q => `
+                            <tr>
+                                <td>${q.number}</td>
+                                <td>${q.preview}</td>
+                                <td><span class="badge badge-success">${q.correctAnswer}</span></td>
+                            </tr>
+                        `).join('');
+
+                        // Reset file input
+                        document.getElementById('fileUploadInput').value = '';
+
+                        // Reload questions in the Questions section
+                        loadQuestions(parseInt(roundNumber));
+                    } else {
+                        successDiv.style.display = 'none';
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerHTML = `<strong>❌ Error:</strong> ${result.message}`;
+                        previewDiv.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('File upload error:', error);
+                    progressDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+                    successDiv.style.display = 'none';
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerHTML = `<strong>❌ Error:</strong> Failed to upload file. ${error.message}`;
+                }
+            }
+
             // Load participants
             async function loadParticipants() {
                 try {
@@ -1569,10 +1902,51 @@
                 });
             });
 
+            // Handle Round Updates
+            document.querySelectorAll('.update-round-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const btn = e.target;
+                    const round = btn.dataset.round;
+                    const durationInput = document.getElementById(`duration-r${round}`);
+                    const duration = durationInput.value;
+
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Saving...';
+                    btn.disabled = true;
+
+                    try {
+                        const result = await api('/api/admin/round/update', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                roundNumber: parseInt(round),
+                                durationMinutes: parseInt(duration)
+                            })
+                        });
+
+                        if (result.success) {
+                            alert(`Round ${round} settings updated!`);
+                        } else {
+                            alert(result.message || 'Failed to update round');
+                        }
+                    } catch (error) {
+                        console.error('Update round error:', error);
+                        alert('Error updating round settings');
+                    } finally {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                });
+            });
+
             // Initialize
+            initFileUpload();
             checkSession();
         })();
     </script>
+
+    <!-- Three.js Library for 3D Admin Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/js/admin-3d-theme.js"></script>
 </body>
 
 </html>

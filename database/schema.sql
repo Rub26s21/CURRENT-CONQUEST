@@ -1,5 +1,5 @@
 -- ============================================================
--- CURRENT CONQUEST - ECE Professional Online Exam Platform
+-- QUIZ CONQUEST - ECE Professional Online Exam Platform
 -- Database Schema for Supabase (PostgreSQL)
 -- ============================================================
 
@@ -194,7 +194,7 @@ DECLARE
     exists_count INTEGER;
 BEGIN
     LOOP
-        new_id := 'CC-' || LPAD(FLOOR(RANDOM() * 100000)::TEXT, 5, '0');
+        new_id := 'QC-' || LPAD(FLOOR(RANDOM() * 100000)::TEXT, 5, '0');
         SELECT COUNT(*) INTO exists_count FROM participants WHERE system_id = new_id;
         IF exists_count = 0 THEN
             RETURN new_id;

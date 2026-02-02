@@ -1,4 +1,4 @@
-# Current Conquest - ECE Professional Online Exam Platform
+# Quiz Conquest - ECE Professional Online Exam Platform
 
 A production-grade, fault-tolerant, secure online examination system for college technical symposium events. Built with Node.js, Express, and Supabase.
 

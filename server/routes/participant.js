@@ -1,6 +1,6 @@
 /**
  * Participant Routes
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  */
 
 const express = require('express');
@@ -62,7 +62,7 @@ router.post('/login', async (req, res) => {
 
         // Generate unique system ID
         const { data: systemIdResult } = await supabase.rpc('generate_participant_id');
-        const systemId = systemIdResult || `CC-${Date.now().toString().slice(-5)}`;
+        const systemId = systemIdResult || `QC-${Date.now().toString().slice(-5)}`;
 
         // Generate session token
         const sessionToken = uuidv4();

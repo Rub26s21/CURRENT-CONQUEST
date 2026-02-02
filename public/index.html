@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Current Conquest - ECE Professional Online Examination Platform">
+    <meta name="description" content="Quiz Conquest - ECE Professional Online Examination Platform">
     <meta name="robots" content="noindex, nofollow">
-    <title>Current Conquest - ECE Online Exam Platform</title>
+    <title>Quiz Conquest - ECE Online Exam Platform</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +17,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/3d-theme.css">
 
     <style>
         /* Page-specific styles */
@@ -26,6 +27,8 @@
             align-items: center;
             justify-content: center;
             padding: var(--space-lg);
+            position: relative;
+            z-index: 10;
         }
 
         .login-container {
@@ -58,6 +61,7 @@
             font-weight: 700;
             color: white;
             box-shadow: var(--shadow-glow);
+            background: linear-gradient(135deg, #0055ff, #00ccff);
         }
 
         .login-logo-text {
@@ -70,24 +74,15 @@
             font-size: 1rem;
         }
 
-        .login-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-xl);
-            padding: var(--space-2xl);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .login-card h2 {
-            font-size: 1.25rem;
-            margin-bottom: var(--space-xl);
-            text-align: center;
+        /* Loading Screen Fix */
+        .loading-screen {
+            background: #000;
         }
 
         .event-info {
             margin-top: var(--space-xl);
             padding-top: var(--space-xl);
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .event-info-item {
@@ -135,11 +130,14 @@
 </head>
 
 <body>
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="logo">
-            <div class="logo-icon">CC</div>
-            <span class="title-gradient">Current Conquest</span>
+            <div class="logo-icon">QC</div>
+            <span class="title-gradient">Quiz Conquest</span>
         </div>
         <div class="spinner spinner-lg"></div>
     </div>
@@ -148,11 +146,12 @@
     <main class="login-page" id="loginPage" style="display: none;">
         <div class="login-container fade-in">
             <div class="login-header">
-                <div class="login-logo">
-                    <div class="login-logo-icon">CC</div>
-                    <span class="login-logo-text title-gradient">Current Conquest</span>
+                <!-- HTML Logo Hidden, Replaced by 3D Animation -->
+                <div class="login-logo" style="display: none;">
+                    <div class="login-logo-icon">QC</div>
+                    <span class="login-logo-text title-gradient">Quiz Conquest</span>
                 </div>
-                <p class="login-subtitle">ECE Professional Online Examination Platform</p>
+                <p class="login-subtitle" style="display: none;">ECE Professional Online Examination Platform</p>
             </div>
 
             <!-- Event Inactive Notice -->
@@ -169,23 +168,26 @@
             </div>
 
             <div class="login-card" id="loginCard">
-                <h2>Participant Registration</h2>
+                <h2 style="color: #fff;">Participant Registration</h2>
 
                 <form id="loginForm">
                     <div class="form-group">
-                        <label class="form-label" for="participantName">Full Name *</label>
+                        <label class="form-label" for="participantName" style="color: rgba(255,255,255,0.7);">Full Name
+                            *</label>
                         <input type="text" id="participantName" name="name" class="form-input"
                             placeholder="Enter your full name" required autocomplete="name">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="collegeName">College Name *</label>
+                        <label class="form-label" for="collegeName" style="color: rgba(255,255,255,0.7);">College Name
+                            *</label>
                         <input type="text" id="collegeName" name="collegeName" class="form-input"
                             placeholder="Enter your college name" required autocomplete="organization">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="phoneNumber">Phone Number *</label>
+                        <label class="form-label" for="phoneNumber" style="color: rgba(255,255,255,0.7);">Phone Number
+                            *</label>
                         <input type="tel" id="phoneNumber" name="phoneNumber" class="form-input"
                             placeholder="Enter your phone number" required autocomplete="tel" pattern="[0-9]{10}"
                             title="Please enter a 10-digit phone number">
@@ -223,9 +225,185 @@
         </div>
     </main>
 
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Floating Orbs for CSS animations -->
+    <div class="floating-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="cyber-grid"></div>
+    <div class="hex-pattern"></div>
+
     <script>
         /**
-         * Current Conquest - Participant Login Page
+         * Liquid Monochrome 3D Background
+         * Ferrofluid / Chrome Liquid Style
+         */
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.Fog(0x000000, 10, 50);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 20;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            // Lighting for Metallic Liquid
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+            scene.add(ambientLight);
+
+            // Main white light
+            const light1 = new THREE.PointLight(0xffffff, 2, 50);
+            light1.position.set(10, 10, 10);
+            scene.add(light1);
+
+            // Rim light (cool white)
+            const light2 = new THREE.PointLight(0xffffff, 1.5, 50);
+            light2.position.set(-10, -5, 10);
+            scene.add(light2);
+
+            // Back light for silhouette
+            const light3 = new THREE.DirectionalLight(0xffffff, 0.5);
+            light3.position.set(0, 5, -10);
+            scene.add(light3);
+
+            // Liquid Chrome Material
+            const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, {
+                format: THREE.RGBFormat,
+                generateMipmaps: true,
+                minFilter: THREE.LinearMipmapLinearFilter
+            });
+
+            const cubeCamera = new THREE.CubeCamera(1, 1000, cubeRenderTarget);
+            scene.add(cubeCamera);
+
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.1,
+                metalness: 1.0,
+                envMap: cubeRenderTarget.texture,
+                envMapIntensity: 1.0
+            });
+
+            // Group for liquid blobs
+            const liquidGroup = new THREE.Group();
+            scene.add(liquidGroup);
+
+            // Create blobs
+            const blobs = [];
+            const blobCount = 15;
+            const geometry = new THREE.SphereGeometry(1, 64, 64);
+
+            for (let i = 0; i < blobCount; i++) {
+                const mesh = new THREE.Mesh(geometry, material);
+                resetBlob(mesh);
+                liquidGroup.add(mesh);
+                blobs.push({
+                    mesh: mesh,
+                    speed: 0.005 + Math.random() * 0.01,
+                    angle: Math.random() * Math.PI * 2,
+                    radius: 2 + Math.random() * 8, // Orbit radius
+                    yOffset: (Math.random() - 0.5) * 10
+                });
+            }
+
+            function resetBlob(mesh) {
+                const scale = 0.5 + Math.random() * 1.5;
+                mesh.scale.set(scale, scale, scale);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 10
+                );
+            }
+
+            // Central "Main" Liquid Sphere
+            const mainSphereGeo = new THREE.IcosahedronGeometry(4, 4); // High detail
+            const mainSphere = new THREE.Mesh(mainSphereGeo, material);
+            liquidGroup.add(mainSphere);
+
+            // Starfield (Black and White)
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 1000;
+            const starPos = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount * 3; i++) {
+                starPos[i] = (Math.random() - 0.5) * 100;
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const starMat = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.8
+            });
+            const stars = new THREE.Points(starGeo, starMat);
+            scene.add(stars);
+
+
+            // Animation Loop
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.01;
+
+                // Animate blobs
+                blobs.forEach(blob => {
+                    blob.mesh.position.x = Math.cos(time * blob.speed + blob.angle) * blob.radius;
+                    blob.mesh.position.z = Math.sin(time * blob.speed + blob.angle) * blob.radius * 0.5;
+                    blob.mesh.position.y = Math.sin(time * 0.5 + blob.angle) * 2 + blob.yOffset;
+
+                    // "Breathing" scale effect
+                    const scaleVar = Math.sin(time * 2 + blob.angle) * 0.1 + 1;
+                    blob.mesh.scale.multiplyScalar(1).setScalar(blob.mesh.userData.baseScale * scaleVar || blob.mesh.scale.x);
+                    if (!blob.mesh.userData.baseScale) blob.mesh.userData.baseScale = blob.mesh.scale.x;
+                });
+
+                // Deform main sphere (vertex animation simulation)
+                // Note: True vertex shader is better for performance, but simple rotation/scale works for "liquid" feel here
+                mainSphere.rotation.y = time * 0.2;
+                mainSphere.rotation.z = time * 0.1;
+
+                // Distort main sphere vertices slightly (Noise effect)
+                // For simplicity/performance in this context, we just rotate and float
+                mainSphere.position.y = Math.sin(time) * 0.5;
+
+                // Camera drift
+                camera.position.x = Math.sin(time * 0.1) * 2;
+                camera.position.y = Math.cos(time * 0.1) * 2;
+                camera.lookAt(scene.position);
+
+                // Update reflections
+                mainSphere.visible = false; // Hide to not reflect itself improperly
+                cubeCamera.position.copy(mainSphere.position);
+                cubeCamera.update(renderer, scene);
+                mainSphere.visible = true;
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        })();
+    </script>
+
+    <script>
+        /**
+         * Quiz Conquest - Participant Login Page
          */
         (function () {
             'use strict';

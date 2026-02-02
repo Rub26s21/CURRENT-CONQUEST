@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Current Conquest - Examination Portal">
+    <meta name="description" content="Quiz Conquest - Examination Portal">
     <meta name="robots" content="noindex, nofollow">
-    <title>Examination | Current Conquest</title>
+    <title>Examination | Quiz Conquest</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,9 +17,15 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/3d-theme.css">
 
     <style>
         /* Exam page specific styles */
+        body {
+            background: transparent !important;
+            color: #fff;
+        }
+
         .exam-header {
             position: fixed;
             top: 0;
@@ -165,11 +171,13 @@
 </head>
 
 <body>
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="logo">
-            <div class="logo-icon">CC</div>
-            <span class="title-gradient">Current Conquest</span>
+            <div class="logo-icon">QC</div>
+            <span class="title-gradient">Quiz Conquest</span>
         </div>
         <div class="spinner spinner-lg"></div>
     </div>
@@ -215,7 +223,7 @@
         <h1 class="waiting-title">Not Qualified</h1>
         <p class="waiting-message">
             Unfortunately, you did not qualify for the next round.
-            Thank you for participating in Current Conquest!
+            Thank you for participating in Quiz Conquest!
         </p>
     </div>
 
@@ -233,10 +241,7 @@
         <header class="exam-header">
             <div class="exam-header-content">
                 <div class="exam-info">
-                    <div class="logo">
-                        <div class="logo-icon">CC</div>
-                        <span>Current Conquest</span>
-                    </div>
+                    <!-- Logo Removed -->
                     <span class="exam-round-badge" id="roundBadge">Round 1</span>
                 </div>
                 <div class="exam-timer" id="examTimer">
@@ -246,7 +251,7 @@
                 <div class="participant-info">
                     <span>👤</span>
                     <span id="headerName">Participant</span>
-                    <span class="badge badge-neutral" id="headerSystemId">CC-00000</span>
+                    <span class="badge badge-neutral" id="headerSystemId">QC-00000</span>
                 </div>
             </div>
         </header>
@@ -301,7 +306,7 @@
 
     <script>
         /**
-         * Current Conquest - Exam Page
+         * Quiz Conquest - Exam Page
          * Strict exam mode with server-authoritative timer
          */
         (function () {
@@ -848,6 +853,273 @@
             }
 
             init();
+            init();
+        })();
+    </script>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        /**
+         * Isometric Cyber Platform Animation
+         * Based on user reference: Layered glass/tech platform in Blue/Cyan theme
+         */
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            // Deep dark blue-black background
+            scene.background = new THREE.Color(0x050a14);
+            scene.fog = new THREE.FogExp2(0x050a14, 0.02);
+
+            // Isometric Camera Setup
+            const aspect = window.innerWidth / window.innerHeight;
+            const d = 20;
+            const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+
+            // Isometric Angle
+            camera.position.set(20, 20, 20);
+            camera.lookAt(scene.position);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // --- LIGHTING ---
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            const blueLight = new THREE.PointLight(0x0088ff, 2, 50);
+            blueLight.position.set(-5, 10, -5);
+            scene.add(blueLight);
+
+            const cyanLight = new THREE.PointLight(0x00ffff, 1.5, 40);
+            cyanLight.position.set(5, 5, 5);
+            scene.add(cyanLight);
+
+            // --- PLATFORM GROUP ---
+            const platformGroup = new THREE.Group();
+            scene.add(platformGroup);
+
+            // Helper to create rounded box shape
+            function createRoundedBoxShape(width, height, radius) {
+                const shape = new THREE.Shape();
+                const x = -width / 2;
+                const y = -height / 2;
+
+                shape.moveTo(x, y + radius);
+                shape.lineTo(x, y + height - radius);
+                shape.quadraticCurveTo(x, y + height, x + radius, y + height);
+                shape.lineTo(x + width - radius, y + height);
+                shape.quadraticCurveTo(x + width, y + height, x + width, y + height - radius);
+                shape.lineTo(x + width, y + radius);
+                shape.quadraticCurveTo(x + width, y, x + width - radius, y);
+                shape.lineTo(x + radius, y);
+                shape.quadraticCurveTo(x, y, x, y + radius);
+
+                return shape;
+            }
+
+            // 1. Base Layer (The LED Matrix Block) - Using Blue/Cyan style
+            // We use an ExtrudeGeometry for thickness
+            const baseSize = 12;
+            const baseShape = createRoundedBoxShape(baseSize, baseSize, 1);
+            const baseGeometry = new THREE.ExtrudeGeometry(baseShape, {
+                depth: 1.5,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                bevelSize: 0.1,
+                bevelThickness: 0.1
+            });
+            // Rotate to lay flat
+            baseGeometry.rotateX(Math.PI / 2);
+
+            // Texture for LED matrix look
+            const ledCanvas = document.createElement('canvas');
+            ledCanvas.width = 128; // Increased resolution
+            ledCanvas.height = 128;
+            const ctx = ledCanvas.getContext('2d');
+            ctx.fillStyle = '#001133';
+            ctx.fillRect(0, 0, 128, 128);
+            ctx.fillStyle = '#00ccff'; // Cyan dots
+
+            // Create grid pattern
+            for (let i = 0; i < 128; i += 8) {
+                for (let j = 0; j < 128; j += 8) {
+                    if ((i + j) % 16 === 0) { // Checkered/dotted pattern
+                        ctx.beginPath();
+                        ctx.arc(i + 4, j + 4, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            const ledTexture = new THREE.CanvasTexture(ledCanvas);
+            ledTexture.wrapS = THREE.RepeatWrapping;
+            ledTexture.wrapT = THREE.RepeatWrapping;
+            ledTexture.minFilter = THREE.NearestFilter;
+            ledTexture.magFilter = THREE.NearestFilter;
+
+            // Emissive material for the sides to look like the glowing yellow block in reference, but BLUE
+            const baseMaterial = new THREE.MeshStandardMaterial({
+                color: 0x000000,
+                emissive: 0x0044aa, // Deep blue glow
+                emissiveMap: ledTexture,
+                emissiveIntensity: 2.0,
+                roughness: 0.4,
+                metalness: 0.8
+            });
+            // Top/Bottom faces can be darker
+            const baseMesh = new THREE.Mesh(baseGeometry, [baseMaterial, baseMaterial]);
+            baseMesh.position.y = -2;
+            platformGroup.add(baseMesh);
+
+
+            // 2. Middle Metallic Layer
+            const midShape = createRoundedBoxShape(baseSize - 0.5, baseSize - 0.5, 0.8);
+            const midGeometry = new THREE.ExtrudeGeometry(midShape, {
+                depth: 0.5,
+                bevelEnabled: true,
+                bevelSize: 0.1,
+                bevelThickness: 0.1
+            });
+            midGeometry.rotateX(Math.PI / 2);
+            const midMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.2,
+                metalness: 0.9,
+            });
+            const midMesh = new THREE.Mesh(midGeometry, midMaterial);
+            midMesh.position.y = -0.5;
+            platformGroup.add(midMesh);
+
+            // 3. Top Glass Layer
+            const glassShape = createRoundedBoxShape(baseSize - 1, baseSize - 1, 0.6);
+            const glassGeometry = new THREE.ExtrudeGeometry(glassShape, {
+                depth: 0.2,
+                bevelEnabled: true,
+                bevelSize: 0.1,
+                bevelThickness: 0.1
+            });
+            glassGeometry.rotateX(Math.PI / 2);
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x000000,
+                metalness: 0.1,
+                roughness: 0.1,
+                transmission: 0.9, // Glass-like transmission
+                opacity: 0.8,
+                transparent: true,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1
+            });
+            const glassMesh = new THREE.Mesh(glassGeometry, glassMaterial);
+            glassMesh.position.y = 0.2;
+            platformGroup.add(glassMesh);
+
+            // 4. Glowing Border for Top Layer (Neon effect)
+            const borderGeometry = new THREE.BufferGeometry();
+            const borderPoints = [];
+            // Create path points following the rounded rect shape roughly
+            const w = (baseSize - 1) / 2;
+            const r = 0.6;
+            // Simplified border path
+            const curve = new THREE.EllipseCurve(0, 0, w, w, 0, 2 * Math.PI, false, 0);
+            // This is a circle, let's approximate the rounded square with points manually or shape.getPoints
+            const shapePoints = glassShape.getPoints(50);
+            const borderGeo = new THREE.BufferGeometry().setFromPoints(shapePoints);
+            // Rotate to match
+            borderGeo.rotateX(Math.PI / 2);
+            const borderMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+            const borderMesh = new THREE.LineLoop(borderGeo, borderMat);
+            borderMesh.position.y = 0.42; // Just above glass
+            platformGroup.add(borderMesh);
+
+
+            // 5. Floating Elements (Icons/Particles)
+            const particlesGroup = new THREE.Group();
+            platformGroup.add(particlesGroup);
+
+            const pGeo = new THREE.OctahedronGeometry(0.2);
+            const pMat = new THREE.MeshBasicMaterial({ color: 0x00ccff });
+            for (let i = 0; i < 15; i++) {
+                const mesh = new THREE.Mesh(pGeo, pMat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 8,
+                    2 + Math.random() * 4,
+                    (Math.random() - 0.5) * 8
+                );
+                mesh.userData = {
+                    speed: 0.02 + Math.random() * 0.02,
+                    offset: Math.random() * Math.PI * 2
+                };
+                particlesGroup.add(mesh);
+            }
+
+            // 6. Central Hologram/Logo placeholder (Triangle/Cursor shape from reference)
+            const cursorShape = new THREE.Shape();
+            cursorShape.moveTo(0, 2);
+            cursorShape.lineTo(1.5, -2);
+            cursorShape.lineTo(0, -1);
+            cursorShape.lineTo(-1.5, -2);
+            cursorShape.lineTo(0, 2);
+
+            const cursorGeo = new THREE.ExtrudeGeometry(cursorShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1 });
+            cursorGeo.rotateX(Math.PI / 2); // Make it stand up? No, float flat or tilted
+            cursorGeo.rotateX(-Math.PI / 4); // Tilt up a bit
+
+            const cursorMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 0.5,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const cursorMesh = new THREE.Mesh(cursorGeo, cursorMat);
+            cursorMesh.position.set(0, 1.5, 0);
+            platformGroup.add(cursorMesh);
+
+            // Animation Loop
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.02;
+
+                // Gentle platform float
+                platformGroup.position.y = Math.sin(time * 0.5) * 0.2;
+
+                // Rotate particles
+                particlesGroup.rotation.y = time * 0.2;
+                particlesGroup.children.forEach(p => {
+                    p.position.y += Math.sin(time + p.userData.offset) * 0.02;
+                });
+
+                // Animate cursor
+                cursorMesh.rotation.y = Math.sin(time * 1.5) * 0.2;
+                cursorMesh.position.y = 1.5 + Math.sin(time * 2) * 0.3;
+
+                renderer.render(scene, camera);
+            }
+
+            // Resize Handler
+            window.addEventListener('resize', () => {
+                const aspect = window.innerWidth / window.innerHeight;
+                camera.left = -d * aspect;
+                camera.right = d * aspect;
+                camera.top = d;
+                camera.bottom = -d;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
         })();
     </script>
 </body>

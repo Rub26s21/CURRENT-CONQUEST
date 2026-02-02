@@ -1,6 +1,6 @@
 /**
  * Database Configuration - Supabase Client
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  */
 
 const { createClient } = require('@supabase/supabase-js');

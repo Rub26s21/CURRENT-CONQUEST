@@ -1,6 +1,6 @@
 /**
  * Authentication Middleware
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  */
 
 const { supabase } = require('../config/database');

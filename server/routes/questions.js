@@ -1,6 +1,6 @@
 /**
  * Question Management Routes
- * Current Conquest - ECE Professional Online Exam Platform
+ * Quiz Conquest - ECE Professional Online Exam Platform
  */
 
 const express = require('express');

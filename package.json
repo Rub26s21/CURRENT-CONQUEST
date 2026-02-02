@@ -1,5 +1,5 @@
 {
-  "name": "current-conquest",
+  "name": "quiz-conquest",
   "version": "1.0.0",
   "description": "ECE Professional Online Exam Platform",
   "main": "server/index.js",
@@ -9,13 +9,23 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "adm-zip": "^0.5.16",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "docx": "^9.5.1",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
     "helmet": "^7.1.0",
-    "uuid": "^9.0.1"
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.17.2",
+    "pptx-parser": "^1.1.7-beta.9",
+    "pptxgenjs": "^4.0.1",
+    "three": "^0.182.0",
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
