@@ -624,8 +624,13 @@
                 <!-- Round Control -->
                 <div class="round-control">
                     <div class="round-control-header">
-                        <h2>Event Control</h2>
-                        <span class="badge badge-neutral" id="eventStatusBadge">Not Started</span>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <h2>Event Control</h2>
+                            <span class="badge badge-neutral" id="eventStatusBadge">Not Started</span>
+                        </div>
+                        <button class="btn btn-danger btn-sm" id="dashboardResetBtn" title="Restart Event">
+                            🔄 Restart Entire Event
+                        </button>
                     </div>
 
                     <div class="round-cards" id="roundCards">
@@ -644,25 +649,11 @@
                         <div class="text-center text-muted" style="padding: var(--space-lg);">No recent violations</div>
                     </div>
                 </div>
-                <h2>Event Control</h2>
-                <div class="round-status-indicator">
-                    <span class="status-dot" id="eventStatusDot"></span>
-                    <span id="eventStatusText">Loading...</span>
+
+
+                <div class="round-cards" id="roundCards">
+                    <!-- Round cards will be rendered here -->
                 </div>
-    </div>
-
-    <div id="activateEventContainer" style="margin-bottom: var(--space-xl);">
-        <button class="btn btn-success btn-lg" id="activateEventBtn">
-            🚀 Activate Event
-        </button>
-        <p class="text-muted" style="margin-top: var(--space-sm);">
-            Activating the event allows participants to login.
-        </p>
-    </div>
-
-    <div class="round-cards" id="roundCards">
-        <!-- Round cards will be rendered here -->
-    </div>
     </div>
     </section>
 
@@ -1783,43 +1774,76 @@
                 }
             });
 
-            // Poll for malpractice updates
-            setInterval(() => {
-                if (document.getElementById('section-dashboard').classList.contains('active')) {
-                    loadMalpracticeFeed();
-                }
-            }, 5000);
+            // Dashboard Restart Event Button
+            const dashboardResetBtn = document.getElementById('dashboardResetBtn');
+            if (dashboardResetBtn) {
+                dashboardResetBtn.addEventListener('click', async () => {
+                    // Prevent duplicate click
+                    if (!confirm('Are you ABSOLUTELY SURE you want to RESTART the entire event?\n\nThis will:\n1. Delete ALL student data\n2. Delete ALL scores\n3. Reset all rounds to start\n\nQuestions will be PRESERVED.')) return;
 
-            // Initial load
-            loadMalpracticeFeed();
+                    const userConfirmation = prompt('Type "RESTART" to confirm event reset:');
+                    if (userConfirmation !== 'RESTART') return;
 
-            // Load participants
-            async function loadParticipants() {
-                try {
-                    const result = await api('/api/admin/participants');
+                    try {
+                        const result = await api('/api/admin/reset-event', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                confirmReset: 'RESET_ALL_DATA',
+                                keepQuestions: true
+                            })
+                        });
 
-                    if (result.success) {
-                        renderParticipants(result.data);
+                        if (result.success) {
+                            alert('Event has been successfully restarted!');
+                            window.location.reload();
+                        } else {
+                            alert('Failed to restart: ' + result.message);
+                        }
+                    } catch (error) {
+                        console.error('Restart error:', error);
+                        alert('Error restarting event.');
                     }
-                } catch (error) {
-                    console.error('Load participants error:', error);
-                }
+                });
             }
+        });
 
-            // Render participants
-            function renderParticipants(participants) {
-                const tbody = document.getElementById('participantsTableBody');
+        // Poll for malpractice updates
+        setInterval(() => {
+            if (document.getElementById('section-dashboard').classList.contains('active')) {
+                loadMalpracticeFeed();
+            }
+        }, 5000);
 
-                if (!participants || participants.length === 0) {
-                    tbody.innerHTML = `
+        // Initial load
+        loadMalpracticeFeed();
+
+        // Load participants
+        async function loadParticipants() {
+            try {
+                const result = await api('/api/admin/participants');
+
+                if (result.success) {
+                    renderParticipants(result.data);
+                }
+            } catch (error) {
+                console.error('Load participants error:', error);
+            }
+        }
+
+        // Render participants
+        function renderParticipants(participants) {
+            const tbody = document.getElementById('participantsTableBody');
+
+            if (!participants || participants.length === 0) {
+                tbody.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center text-muted">No participants yet</td>
                         </tr>
                     `;
-                    return;
-                }
+                return;
+            }
 
-                tbody.innerHTML = participants.map(p => `
+            tbody.innerHTML = participants.map(p => `
                     <tr>
                         <td><code>${p.system_id}</code></td>
                         <td>${p.name}</td>
@@ -1828,46 +1852,46 @@
                         <td>Round ${p.current_round}</td>
                         <td>
                             ${p.is_disqualified ?
-                        '<span class="badge badge-danger">Disqualified</span>' :
-                        p.is_qualified ?
-                            '<span class="badge badge-success">Qualified</span>' :
-                            '<span class="badge badge-neutral">Eliminated</span>'
-                    }
+                    '<span class="badge badge-danger">Disqualified</span>' :
+                    p.is_qualified ?
+                        '<span class="badge badge-success">Qualified</span>' :
+                        '<span class="badge badge-neutral">Eliminated</span>'
+                }
                         </td>
                         <td>${new Date(p.created_at).toLocaleString()}</td>
                     </tr>
                 `).join('');
-            }
+        }
 
-            // Load results
-            async function loadResults(roundNumber) {
-                document.getElementById('resultsRoundNumber').textContent = roundNumber;
+        // Load results
+        async function loadResults(roundNumber) {
+            document.getElementById('resultsRoundNumber').textContent = roundNumber;
 
-                try {
-                    const result = await api(`/api/admin/results/${roundNumber}`);
+            try {
+                const result = await api(`/api/admin/results/${roundNumber}`);
 
-                    if (result.success) {
-                        renderResults(result.data.results);
-                    }
-                } catch (error) {
-                    console.error('Load results error:', error);
+                if (result.success) {
+                    renderResults(result.data.results);
                 }
+            } catch (error) {
+                console.error('Load results error:', error);
             }
+        }
 
-            // Render results
-            function renderResults(results) {
-                const tbody = document.getElementById('resultsTableBody');
+        // Render results
+        function renderResults(results) {
+            const tbody = document.getElementById('resultsTableBody');
 
-                if (!results || results.length === 0) {
-                    tbody.innerHTML = `
+            if (!results || results.length === 0) {
+                tbody.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center text-muted">No results available for this round</td>
                         </tr>
                     `;
-                    return;
-                }
+                return;
+            }
 
-                tbody.innerHTML = results.map(r => `
+            tbody.innerHTML = results.map(r => `
                     <tr>
                         <td><strong>#${r.rank || '-'}</strong></td>
                         <td><code>${r.participants?.system_id || '-'}</code></td>
@@ -1877,52 +1901,52 @@
                         <td>${r.time_taken_seconds ? formatTime(r.time_taken_seconds) : '-'}</td>
                         <td>
                             ${r.qualified_for_next ?
-                        '<span class="badge badge-success">Qualified</span>' :
-                        '<span class="badge badge-neutral">Eliminated</span>'
-                    }
+                    '<span class="badge badge-success">Qualified</span>' :
+                    '<span class="badge badge-neutral">Eliminated</span>'
+                }
                         </td>
                     </tr>
                 `).join('');
-            }
+        }
 
-            // Format time
-            function formatTime(seconds) {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${mins}m ${secs}s`;
-            }
+        // Format time
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}m ${secs}s`;
+        }
 
-            // Export results
-            async function exportResults() {
-                const roundNumber = state.selectedResultsRound;
-                window.location.href = `/api/admin/export/${roundNumber}`;
-            }
+        // Export results
+        async function exportResults() {
+            const roundNumber = state.selectedResultsRound;
+            window.location.href = `/api/admin/export/${roundNumber}`;
+        }
 
-            // Load audit logs
-            async function loadAuditLogs() {
-                try {
-                    const result = await api('/api/admin/audit-logs');
+        // Load audit logs
+        async function loadAuditLogs() {
+            try {
+                const result = await api('/api/admin/audit-logs');
 
-                    if (result.success) {
-                        renderAuditLogs(result.data);
-                    }
-                } catch (error) {
-                    console.error('Load audit logs error:', error);
+                if (result.success) {
+                    renderAuditLogs(result.data);
                 }
+            } catch (error) {
+                console.error('Load audit logs error:', error);
             }
+        }
 
-            // Render audit logs
-            function renderAuditLogs(logs) {
-                const container = document.getElementById('auditLogsContainer');
+        // Render audit logs
+        function renderAuditLogs(logs) {
+            const container = document.getElementById('auditLogsContainer');
 
-                if (!logs || logs.length === 0) {
-                    container.innerHTML = `
+            if (!logs || logs.length === 0) {
+                container.innerHTML = `
                         <div class="text-center text-muted">No audit logs available</div>
                     `;
-                    return;
-                }
+                return;
+            }
 
-                container.innerHTML = logs.map(log => `
+            container.innerHTML = logs.map(log => `
                     <div class="audit-log-item">
                         <div class="audit-log-time">${new Date(log.created_at).toLocaleString()}</div>
                         <div class="audit-log-content">
@@ -1933,141 +1957,141 @@
                         </div>
                     </div>
                 `).join('');
+        }
+
+        // Reset event
+        async function resetEvent() {
+            const confirmed = await showConfirm(
+                '⚠️ Reset Entire Event',
+                'This will DELETE ALL participants, responses, scores, and questions. This action CANNOT be undone. Are you absolutely sure?',
+                '🗑️'
+            );
+
+            if (!confirmed) return;
+
+            // Double confirmation
+            const doubleConfirmed = await showConfirm(
+                'Final Confirmation',
+                'Type "RESET" mentally and click confirm to proceed with the reset.',
+                '⚠️'
+            );
+
+            if (!doubleConfirmed) return;
+
+            try {
+                const result = await api('/api/admin/reset-event', {
+                    method: 'POST',
+                    body: JSON.stringify({ confirmReset: 'RESET_ALL_DATA' })
+                });
+
+                if (result.success) {
+                    alert('Event has been reset successfully');
+                    loadDashboard();
+                } else {
+                    alert(result.message || 'Reset failed');
+                }
+            } catch (error) {
+                console.error('Reset error:', error);
+                alert('Reset failed');
             }
+        }
 
-            // Reset event
-            async function resetEvent() {
-                const confirmed = await showConfirm(
-                    '⚠️ Reset Entire Event',
-                    'This will DELETE ALL participants, responses, scores, and questions. This action CANNOT be undone. Are you absolutely sure?',
-                    '🗑️'
-                );
+        // Auto refresh
+        function startAutoRefresh() {
+            state.refreshInterval = setInterval(() => {
+                if (state.currentSection === 'dashboard') {
+                    loadDashboard();
+                }
+            }, 5000);
+        }
 
-                if (!confirmed) return;
+        function stopAutoRefresh() {
+            if (state.refreshInterval) {
+                clearInterval(state.refreshInterval);
+            }
+        }
 
-                // Double confirmation
-                const doubleConfirmed = await showConfirm(
-                    'Final Confirmation',
-                    'Type "RESET" mentally and click confirm to proceed with the reset.',
-                    '⚠️'
-                );
+        // Event listeners
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        document.getElementById('activateEventBtn').addEventListener('click', activateEvent);
+        document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
+        document.getElementById('questionForm').addEventListener('submit', saveQuestion);
+        document.getElementById('clearQuestionForm').addEventListener('click', clearQuestionForm);
+        document.getElementById('bulkImportBtn').addEventListener('click', bulkImport);
+        document.getElementById('refreshParticipants').addEventListener('click', loadParticipants);
+        document.getElementById('exportResultsBtn').addEventListener('click', exportResults);
+        document.getElementById('refreshAuditLogs').addEventListener('click', loadAuditLogs);
+        document.getElementById('resetEventBtn').addEventListener('click', resetEvent);
 
-                if (!doubleConfirmed) return;
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                showSection(item.dataset.section);
+            });
+        });
+
+        // Question round tabs
+        document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.selectedQuestionRound = parseInt(btn.dataset.round);
+                document.getElementById('questionRound').value = btn.dataset.round;
+                loadQuestions(state.selectedQuestionRound);
+            });
+        });
+
+        // Results round tabs
+        document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.selectedResultsRound = parseInt(btn.dataset.round);
+                loadResults(state.selectedResultsRound);
+            });
+        });
+
+        // Handle Round Updates
+        document.querySelectorAll('.update-round-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const btn = e.target;
+                const round = btn.dataset.round;
+                const durationInput = document.getElementById(`duration-r${round}`);
+                const duration = durationInput.value;
+
+                const originalText = btn.textContent;
+                btn.textContent = 'Saving...';
+                btn.disabled = true;
 
                 try {
-                    const result = await api('/api/admin/reset-event', {
+                    const result = await api('/api/admin/round/update', {
                         method: 'POST',
-                        body: JSON.stringify({ confirmReset: 'RESET_ALL_DATA' })
+                        body: JSON.stringify({
+                            roundNumber: parseInt(round),
+                            durationMinutes: parseInt(duration)
+                        })
                     });
 
                     if (result.success) {
-                        alert('Event has been reset successfully');
-                        loadDashboard();
+                        alert(`Round ${round} settings updated!`);
                     } else {
-                        alert(result.message || 'Reset failed');
+                        alert(result.message || 'Failed to update round');
                     }
                 } catch (error) {
-                    console.error('Reset error:', error);
-                    alert('Reset failed');
+                    console.error('Update round error:', error);
+                    alert('Error updating round settings');
+                } finally {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
                 }
-            }
-
-            // Auto refresh
-            function startAutoRefresh() {
-                state.refreshInterval = setInterval(() => {
-                    if (state.currentSection === 'dashboard') {
-                        loadDashboard();
-                    }
-                }, 5000);
-            }
-
-            function stopAutoRefresh() {
-                if (state.refreshInterval) {
-                    clearInterval(state.refreshInterval);
-                }
-            }
-
-            // Event listeners
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-            document.getElementById('activateEventBtn').addEventListener('click', activateEvent);
-            document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
-            document.getElementById('questionForm').addEventListener('submit', saveQuestion);
-            document.getElementById('clearQuestionForm').addEventListener('click', clearQuestionForm);
-            document.getElementById('bulkImportBtn').addEventListener('click', bulkImport);
-            document.getElementById('refreshParticipants').addEventListener('click', loadParticipants);
-            document.getElementById('exportResultsBtn').addEventListener('click', exportResults);
-            document.getElementById('refreshAuditLogs').addEventListener('click', loadAuditLogs);
-            document.getElementById('resetEventBtn').addEventListener('click', resetEvent);
-
-            // Navigation
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    showSection(item.dataset.section);
-                });
             });
+        });
 
-            // Question round tabs
-            document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    state.selectedQuestionRound = parseInt(btn.dataset.round);
-                    document.getElementById('questionRound').value = btn.dataset.round;
-                    loadQuestions(state.selectedQuestionRound);
-                });
-            });
-
-            // Results round tabs
-            document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    state.selectedResultsRound = parseInt(btn.dataset.round);
-                    loadResults(state.selectedResultsRound);
-                });
-            });
-
-            // Handle Round Updates
-            document.querySelectorAll('.update-round-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const btn = e.target;
-                    const round = btn.dataset.round;
-                    const durationInput = document.getElementById(`duration-r${round}`);
-                    const duration = durationInput.value;
-
-                    const originalText = btn.textContent;
-                    btn.textContent = 'Saving...';
-                    btn.disabled = true;
-
-                    try {
-                        const result = await api('/api/admin/round/update', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                roundNumber: parseInt(round),
-                                durationMinutes: parseInt(duration)
-                            })
-                        });
-
-                        if (result.success) {
-                            alert(`Round ${round} settings updated!`);
-                        } else {
-                            alert(result.message || 'Failed to update round');
-                        }
-                    } catch (error) {
-                        console.error('Update round error:', error);
-                        alert('Error updating round settings');
-                    } finally {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    }
-                });
-            });
-
-            // Initialize
-            initFileUpload();
-            checkSession();
-        })();
+        // Initialize
+        initFileUpload();
+        checkSession();
+        }) ();
     </script>
 
     <!-- Three.js Library for 3D Admin Background -->
