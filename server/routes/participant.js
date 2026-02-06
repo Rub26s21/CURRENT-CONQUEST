@@ -443,6 +443,14 @@ router.get('/question/:questionNumber', requireParticipant, async (req, res) => 
             .eq('question_id', question.id)
             .single();
 
+        // Get count of answered questions for this round
+        const { count: answeredCount } = await supabase
+            .from('responses')
+            .select('*', { count: 'exact', head: true })
+            .eq('participant_id', participant.id)
+            .eq('round_number', roundNumber)
+            .not('selected_option', 'is', null);
+
         res.json({
             success: true,
             data: {
@@ -457,7 +465,8 @@ router.get('/question/:questionNumber', requireParticipant, async (req, res) => 
                 },
                 selectedOption: response?.selected_option || null,
                 totalQuestions: 15,
-                currentQuestion: examSession.current_question_number
+                currentQuestion: examSession.current_question_number,
+                answeredCount: answeredCount || 0
             }
         });
     } catch (error) {

@@ -645,6 +645,11 @@
                     elements.questionText.textContent = result.data.questionText;
                     elements.progressFill.style.width = `${((questionNumber - 1) / 15) * 100}%`;
 
+                    // Update answered count from server
+                    if (result.data.answeredCount !== undefined) {
+                        elements.answeredCount.textContent = result.data.answeredCount;
+                    }
+
                     // Update button text
                     if (questionNumber >= 15) {
                         elements.nextBtnText.textContent = 'Submit Exam';

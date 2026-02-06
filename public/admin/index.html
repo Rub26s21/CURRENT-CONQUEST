@@ -376,15 +376,70 @@
 
         @media (max-width: 768px) {
             .admin-sidebar {
-                transform: translateX(-100%);
+                position: fixed;
+                left: -280px;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                transition: left 0.3s ease;
+                z-index: 1000;
+            }
+
+            .admin-sidebar.open {
+                left: 0;
             }
 
             .admin-main {
                 margin-left: 0;
+                padding-top: 60px !important;
             }
 
             .dashboard-stats {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
+            }
+
+            .mobile-menu-toggle {
+                display: flex !important;
+            }
+        }
+
+        /* Status dot indicator */
+        .round-status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.inactive {
+            background: #6c757d;
+            animation: none;
+        }
+
+        .status-dot.running {
+            background: #28a745;
+        }
+
+        .status-dot.completed {
+            background: #007bff;
+            animation: none;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
             }
         }
 
@@ -400,6 +455,12 @@
 </head>
 
 <body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">☰</button>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- 3D Canvas Container -->
     <div id="canvas-container"></div>
 
@@ -626,11 +687,30 @@
                     <div class="round-control-header">
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <h2>Event Control</h2>
+                            <div class="round-status-indicator">
+                                <div class="status-dot inactive" id="eventStatusDot"></div>
+                                <span id="eventStatusText">Not Started</span>
+                            </div>
                             <span class="badge badge-neutral" id="eventStatusBadge">Not Started</span>
                         </div>
-                        <button class="btn btn-danger btn-sm" id="dashboardResetBtn" title="Restart Event">
-                            🔄 Restart Entire Event
-                        </button>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <button class="btn btn-success btn-sm" id="activateEventBtn" style="display: none;">
+                                🚀 Activate Event
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="dashboardResetBtn" title="Restart Event">
+                                🔄 Restart Entire Event
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Activate Event Container (shown when event is not active) -->
+                    <div id="activateEventContainer" class="card"
+                        style="margin-bottom: var(--space-lg); display: none;">
+                        <div class="card-body text-center">
+                            <h3>🚀 Event Not Activated</h3>
+                            <p class="text-muted">Click the button above to activate the event and allow participants to
+                                join.</p>
+                        </div>
                     </div>
 
                     <div class="round-cards" id="roundCards">
@@ -649,225 +729,222 @@
                         <div class="text-center text-muted" style="padding: var(--space-lg);">No recent violations</div>
                     </div>
                 </div>
+            </section>
 
 
-                <div class="round-cards" id="roundCards">
-                    <!-- Round cards will be rendered here -->
+
+            <!-- Questions Section -->
+            <section class="section hidden" id="section-questions">
+                <div class="admin-header">
+                    <h1 class="admin-title">Question Management</h1>
                 </div>
-    </div>
-    </section>
 
-    <!-- Questions Section -->
-    <section class="section hidden" id="section-questions">
-        <div class="admin-header">
-            <h1 class="admin-title">Question Management</h1>
-        </div>
+                <!-- Round Selector -->
+                <div class="tab-nav" id="questionRoundTabs">
+                    <button class="tab-btn active" data-round="1">Round 1</button>
+                    <button class="tab-btn" data-round="2">Round 2</button>
+                    <button class="tab-btn" data-round="3">Round 3</button>
+                </div>
 
-        <!-- Round Selector -->
-        <div class="tab-nav" id="questionRoundTabs">
-            <button class="tab-btn active" data-round="1">Round 1</button>
-            <button class="tab-btn" data-round="2">Round 2</button>
-            <button class="tab-btn" data-round="3">Round 3</button>
-        </div>
+                <!-- Question Form -->
+                <div class="question-form-container">
+                    <h3 style="margin-bottom: var(--space-lg);">Add/Edit Question</h3>
+                    <form id="questionForm">
+                        <input type="hidden" id="editQuestionId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Round</label>
+                                <select id="questionRound" class="form-input form-select">
+                                    <option value="1">Round 1</option>
+                                    <option value="2">Round 2</option>
+                                    <option value="3">Round 3</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Question Number (1-15)</label>
+                                <input type="number" id="questionNumber" class="form-input" min="1" max="15" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Question Text</label>
+                            <textarea id="questionText" class="form-input form-textarea" rows="3" required></textarea>
+                        </div>
+                        <div class="options-grid">
+                            <div class="form-group">
+                                <label class="form-label">Option A</label>
+                                <input type="text" id="optionA" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Option B</label>
+                                <input type="text" id="optionB" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Option C</label>
+                                <input type="text" id="optionC" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Option D</label>
+                                <input type="text" id="optionD" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Correct Answer</label>
+                            <select id="correctOption" class="form-input form-select" required>
+                                <option value="">Select correct option</option>
+                                <option value="A">Option A</option>
+                                <option value="B">Option B</option>
+                                <option value="C">Option C</option>
+                                <option value="D">Option D</option>
+                            </select>
+                        </div>
+                        <div id="questionFormError" class="alert alert-danger" style="display: none;"></div>
+                        <div style="display: flex; gap: var(--space-md);">
+                            <button type="submit" class="btn btn-primary" id="saveQuestionBtn">
+                                Save Question
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="clearQuestionForm">
+                                Clear Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
 
-        <!-- Question Form -->
-        <div class="question-form-container">
-            <h3 style="margin-bottom: var(--space-lg);">Add/Edit Question</h3>
-            <form id="questionForm">
-                <input type="hidden" id="editQuestionId">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Round</label>
-                        <select id="questionRound" class="form-input form-select">
-                            <option value="1">Round 1</option>
-                            <option value="2">Round 2</option>
-                            <option value="3">Round 3</option>
-                        </select>
+                <!-- Questions List -->
+                <div class="question-list" id="questionsList">
+                    <div class="text-center text-muted" style="padding: var(--space-xl);">
+                        No questions added yet
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Question Number (1-15)</label>
-                        <input type="number" id="questionNumber" class="form-input" min="1" max="15" required>
+                </div>
+
+                <!-- Bulk Import -->
+                <div class="bulk-import">
+                    <h4 style="margin-bottom: var(--space-md);">Bulk Import Questions</h4>
+                    <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                        Paste JSON array of questions or upload a JSON file
+                    </p>
+                    <textarea id="bulkImportData" class="form-input form-textarea" rows="5"
+                        placeholder='[{"questionText": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctOption": "A"}]'></textarea>
+                    <div
+                        style="display: flex; gap: var(--space-md); justify-content: center; margin-top: var(--space-md);">
+                        <button class="btn btn-primary" id="bulkImportBtn">Import Questions</button>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Question Text</label>
-                    <textarea id="questionText" class="form-input form-textarea" rows="3" required></textarea>
+            </section>
+
+            <!-- Participants Section -->
+            <section class="section hidden" id="section-participants">
+                <div class="admin-header">
+                    <h1 class="admin-title">Participants</h1>
+                    <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
                 </div>
-                <div class="options-grid">
-                    <div class="form-group">
-                        <label class="form-label">Option A</label>
-                        <input type="text" id="optionA" class="form-input" required>
+
+                <div class="table-container">
+                    <table class="table" id="participantsTable">
+                        <thead>
+                            <tr>
+                                <th>System ID</th>
+                                <th>Name</th>
+                                <th>College</th>
+                                <th>Phone</th>
+                                <th>Current Round</th>
+                                <th>Status</th>
+                                <th>Joined At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participantsTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="section hidden" id="section-results">
+                <div class="admin-header">
+                    <h1 class="admin-title">Results</h1>
+                </div>
+
+                <!-- Round Selector -->
+                <div class="tab-nav" id="resultsRoundTabs">
+                    <button class="tab-btn active" data-round="1">Round 1</button>
+                    <button class="tab-btn" data-round="2">Round 2</button>
+                    <button class="tab-btn" data-round="3">Round 3</button>
+                </div>
+
+                <div class="results-container">
+                    <div class="results-header">
+                        <h3>Round <span id="resultsRoundNumber">1</span> Results</h3>
+                        <button class="btn btn-primary" id="exportResultsBtn">📥 Export CSV</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Option B</label>
-                        <input type="text" id="optionB" class="form-input" required>
+                    <table class="table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>System ID</th>
+                                <th>Name</th>
+                                <th>College/Phone</th>
+                                <th>Score</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Select a round to view results</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Audit Logs Section -->
+            <section class="section hidden" id="section-audit">
+                <div class="admin-header">
+                    <h1 class="admin-title">Audit Logs</h1>
+                    <button class="btn btn-secondary" id="refreshAuditLogs">🔄 Refresh</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-body" id="auditLogsContainer" style="max-height: 600px; overflow-y: auto;">
+                        <div class="text-center text-muted">Loading audit logs...</div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Option C</label>
-                        <input type="text" id="optionC" class="form-input" required>
+                </div>
+            </section>
+
+            <!-- File Upload Section -->
+            <section class="section hidden" id="section-file-upload">
+                <div class="admin-header">
+                    <h1 class="admin-title">📁 File Upload</h1>
+                    <div class="admin-actions">
+                        <span class="text-muted" style="font-size: 0.9rem; margin-right: 10px;">Download
+                            Template:</span>
+                        <a href="/api/upload/template?format=excel" class="btn btn-sm btn-secondary">📊 Excel</a>
+                        <a href="/api/upload/template?format=word" class="btn btn-sm btn-secondary">📝 Word</a>
+                        <a href="/api/upload/template?format=pdf" class="btn btn-sm btn-secondary">📄 PDF</a>
+                        <a href="/api/upload/template?format=ppt" class="btn btn-sm btn-secondary">📑 PPT</a>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Option D</label>
-                        <input type="text" id="optionD" class="form-input" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Correct Answer</label>
-                    <select id="correctOption" class="form-input form-select" required>
-                        <option value="">Select correct option</option>
-                        <option value="A">Option A</option>
-                        <option value="B">Option B</option>
-                        <option value="C">Option C</option>
-                        <option value="D">Option D</option>
-                    </select>
-                </div>
-                <div id="questionFormError" class="alert alert-danger" style="display: none;"></div>
-                <div style="display: flex; gap: var(--space-md);">
-                    <button type="submit" class="btn btn-primary" id="saveQuestionBtn">
-                        Save Question
-                    </button>
-                    <button type="button" class="btn btn-secondary" id="clearQuestionForm">
-                        Clear Form
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Questions List -->
-        <div class="question-list" id="questionsList">
-            <div class="text-center text-muted" style="padding: var(--space-xl);">
-                No questions added yet
-            </div>
-        </div>
-
-        <!-- Bulk Import -->
-        <div class="bulk-import">
-            <h4 style="margin-bottom: var(--space-md);">Bulk Import Questions</h4>
-            <p class="text-muted" style="margin-bottom: var(--space-lg);">
-                Paste JSON array of questions or upload a JSON file
-            </p>
-            <textarea id="bulkImportData" class="form-input form-textarea" rows="5"
-                placeholder='[{"questionText": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctOption": "A"}]'></textarea>
-            <div style="display: flex; gap: var(--space-md); justify-content: center; margin-top: var(--space-md);">
-                <button class="btn btn-primary" id="bulkImportBtn">Import Questions</button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Participants Section -->
-    <section class="section hidden" id="section-participants">
-        <div class="admin-header">
-            <h1 class="admin-title">Participants</h1>
-            <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
-        </div>
-
-        <div class="table-container">
-            <table class="table" id="participantsTable">
-                <thead>
-                    <tr>
-                        <th>System ID</th>
-                        <th>Name</th>
-                        <th>College</th>
-                        <th>Phone</th>
-                        <th>Current Round</th>
-                        <th>Status</th>
-                        <th>Joined At</th>
-                    </tr>
-                </thead>
-                <tbody id="participantsTableBody">
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- Results Section -->
-    <section class="section hidden" id="section-results">
-        <div class="admin-header">
-            <h1 class="admin-title">Results</h1>
-        </div>
-
-        <!-- Round Selector -->
-        <div class="tab-nav" id="resultsRoundTabs">
-            <button class="tab-btn active" data-round="1">Round 1</button>
-            <button class="tab-btn" data-round="2">Round 2</button>
-            <button class="tab-btn" data-round="3">Round 3</button>
-        </div>
-
-        <div class="results-container">
-            <div class="results-header">
-                <h3>Round <span id="resultsRoundNumber">1</span> Results</h3>
-                <button class="btn btn-primary" id="exportResultsBtn">📥 Export CSV</button>
-            </div>
-            <table class="table" id="resultsTable">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>System ID</th>
-                        <th>Name</th>
-                        <th>College/Phone</th>
-                        <th>Score</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsTableBody">
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">Select a round to view results</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- Audit Logs Section -->
-    <section class="section hidden" id="section-audit">
-        <div class="admin-header">
-            <h1 class="admin-title">Audit Logs</h1>
-            <button class="btn btn-secondary" id="refreshAuditLogs">🔄 Refresh</button>
-        </div>
-
-        <div class="card">
-            <div class="card-body" id="auditLogsContainer" style="max-height: 600px; overflow-y: auto;">
-                <div class="text-center text-muted">Loading audit logs...</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- File Upload Section -->
-    <section class="section hidden" id="section-file-upload">
-        <div class="admin-header">
-            <h1 class="admin-title">📁 File Upload</h1>
-            <div class="admin-actions">
-                <span class="text-muted" style="font-size: 0.9rem; margin-right: 10px;">Download
-                    Template:</span>
-                <a href="/api/upload/template?format=excel" class="btn btn-sm btn-secondary">📊 Excel</a>
-                <a href="/api/upload/template?format=word" class="btn btn-sm btn-secondary">📝 Word</a>
-                <a href="/api/upload/template?format=pdf" class="btn btn-sm btn-secondary">📄 PDF</a>
-                <a href="/api/upload/template?format=ppt" class="btn btn-sm btn-secondary">📑 PPT</a>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-body">
-                <h3 style="margin-bottom: var(--space-lg);">Import Questions from File</h3>
-                <p class="text-muted" style="margin-bottom: var(--space-xl);">
-                    Upload questions from Excel, PDF, Word, or PowerPoint files.
-                    Maximum 15 questions per round will be imported.
-                </p>
-
-                <div class="form-group">
-                    <label class="form-label">Select Round</label>
-                    <select id="fileUploadRound" class="form-input" style="max-width: 200px;">
-                        <option value="1">Round 1</option>
-                        <option value="2">Round 2</option>
-                        <option value="3">Round 3</option>
-                    </select>
                 </div>
 
-                <div class="file-upload-area" id="fileDropZone" style="
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: var(--space-lg);">Import Questions from File</h3>
+                        <p class="text-muted" style="margin-bottom: var(--space-xl);">
+                            Upload questions from Excel, PDF, Word, or PowerPoint files.
+                            Maximum 15 questions per round will be imported.
+                        </p>
+
+                        <div class="form-group">
+                            <label class="form-label">Select Round</label>
+                            <select id="fileUploadRound" class="form-input" style="max-width: 200px;">
+                                <option value="1">Round 1</option>
+                                <option value="2">Round 2</option>
+                                <option value="3">Round 3</option>
+                            </select>
+                        </div>
+
+                        <div class="file-upload-area" id="fileDropZone" style="
                             border: 2px dashed rgba(255, 100, 60, 0.4);
                             border-radius: var(--radius-xl);
                             padding: var(--space-3xl);
@@ -877,129 +954,129 @@
                             background: rgba(255, 100, 60, 0.05);
                             margin-bottom: var(--space-xl);
                         ">
-                    <div style="font-size: 3rem; margin-bottom: var(--space-lg);">📤</div>
-                    <h3 style="margin-bottom: var(--space-md);">Drag & Drop File Here</h3>
-                    <p class="text-muted" style="margin-bottom: var(--space-lg);">or click to browse</p>
-                    <input type="file" id="fileUploadInput" style="display: none;"
-                        accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt">
-                    <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
-                        <span class="badge badge-primary">📊 Excel</span>
-                        <span class="badge badge-primary">📄 PDF</span>
-                        <span class="badge badge-primary">📝 Word</span>
-                        <span class="badge badge-primary">📑 PowerPoint</span>
+                            <div style="font-size: 3rem; margin-bottom: var(--space-lg);">📤</div>
+                            <h3 style="margin-bottom: var(--space-md);">Drag & Drop File Here</h3>
+                            <p class="text-muted" style="margin-bottom: var(--space-lg);">or click to browse</p>
+                            <input type="file" id="fileUploadInput" style="display: none;"
+                                accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt">
+                            <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
+                                <span class="badge badge-primary">📊 Excel</span>
+                                <span class="badge badge-primary">📄 PDF</span>
+                                <span class="badge badge-primary">📝 Word</span>
+                                <span class="badge badge-primary">📑 PowerPoint</span>
+                            </div>
+                        </div>
+
+                        <div id="fileUploadProgress" style="display: none; margin-bottom: var(--space-xl);">
+                            <div style="display: flex; align-items: center; gap: var(--space-md);">
+                                <div class="spinner"></div>
+                                <span id="fileUploadStatus">Processing file...</span>
+                            </div>
+                        </div>
+
+                        <div id="fileUploadResult" style="display: none; margin-bottom: var(--space-xl);">
+                            <div class="alert alert-success" id="fileUploadSuccess" style="display: none;"></div>
+                            <div class="alert alert-danger" id="fileUploadError" style="display: none;"></div>
+                        </div>
+
+                        <div id="uploadedQuestionsPreview" style="display: none;">
+                            <h4 style="margin-bottom: var(--space-lg);">📋 Imported Questions Preview</h4>
+                            <div class="table-container">
+                                <table class="table" id="previewTable">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Question Preview</th>
+                                            <th>Answer</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div id="fileUploadProgress" style="display: none; margin-bottom: var(--space-xl);">
-                    <div style="display: flex; align-items: center; gap: var(--space-md);">
-                        <div class="spinner"></div>
-                        <span id="fileUploadStatus">Processing file...</span>
+                <div class="card" style="margin-top: var(--space-xl);">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: var(--space-lg);">📖 Supported Formats</h3>
+
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-xl);">
+                            <div>
+                                <h4 style="color: #10b981; margin-bottom: var(--space-md);">📊 Excel Files (.xlsx, .xls)
+                                </h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Use columns: <strong>Question, Option A, Option B, Option C, Option D,
+                                        Correct</strong><br>
+                                    The correct answer should be A, B, C, or D.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 style="color: #3b82f6; margin-bottom: var(--space-md);">📄 PDF Files (.pdf)</h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Format each question with options labeled A), B), C), D) and include "Answer: X" at
+                                    the end.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 style="color: #8b5cf6; margin-bottom: var(--space-md);">📝 Word Files (.docx)</h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Same format as PDF. Each question followed by options and answer.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 style="color: #f59e0b; margin-bottom: var(--space-md);">📑 PowerPoint Files (.pptx)
+                                </h4>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    One question per slide with options and answer indicated.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            style="margin-top: var(--space-xl); padding: var(--space-lg); background: rgba(255, 180, 80, 0.1); border-radius: var(--radius-lg); border: 1px solid rgba(255, 180, 80, 0.3);">
+                            <h4 style="color: #f59e0b; margin-bottom: var(--space-sm);">💡 Tips for Best Results</h4>
+                            <ul class="text-muted" style="margin: 0; padding-left: var(--space-xl); font-size: 0.9rem;">
+                                <li>For Excel: Download the template and fill in your questions</li>
+                                <li>For PDF/Word: Use clear formatting with labeled options (A, B, C, D)</li>
+                                <li>Include "Answer: X" or "Correct: X" for each question</li>
+                                <li>Maximum 15 questions per round will be imported</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div id="fileUploadResult" style="display: none; margin-bottom: var(--space-xl);">
-                    <div class="alert alert-success" id="fileUploadSuccess" style="display: none;"></div>
-                    <div class="alert alert-danger" id="fileUploadError" style="display: none;"></div>
+            <!-- Settings Section -->
+            <section class="section hidden" id="section-settings">
+                <div class="admin-header">
+                    <h1 class="admin-title">Settings</h1>
                 </div>
 
-                <div id="uploadedQuestionsPreview" style="display: none;">
-                    <h4 style="margin-bottom: var(--space-lg);">📋 Imported Questions Preview</h4>
-                    <div class="table-container">
-                        <table class="table" id="previewTable">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Question Preview</th>
-                                    <th>Answer</th>
-                                </tr>
-                            </thead>
-                            <tbody id="previewTableBody"></tbody>
-                        </table>
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: var(--space-lg); color: var(--danger);">⚠️ Danger Zone</h3>
+
+                        <div
+                            style="padding: var(--space-lg); background: hsla(0, 70%, 55%, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-lg);">
+                            <h4 style="margin-bottom: var(--space-sm);">Reset Event</h4>
+                            <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                                This will delete all participants, responses, and scores. Questions will also be
+                                removed.
+                                This action cannot be undone.
+                            </p>
+                            <button class="btn btn-danger" id="resetEventBtn">
+                                🗑️ Reset Entire Event
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card" style="margin-top: var(--space-xl);">
-            <div class="card-body">
-                <h3 style="margin-bottom: var(--space-lg);">📖 Supported Formats</h3>
-
-                <div
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-xl);">
-                    <div>
-                        <h4 style="color: #10b981; margin-bottom: var(--space-md);">📊 Excel Files (.xlsx, .xls)
-                        </h4>
-                        <p class="text-muted" style="font-size: 0.9rem;">
-                            Use columns: <strong>Question, Option A, Option B, Option C, Option D,
-                                Correct</strong><br>
-                            The correct answer should be A, B, C, or D.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h4 style="color: #3b82f6; margin-bottom: var(--space-md);">📄 PDF Files (.pdf)</h4>
-                        <p class="text-muted" style="font-size: 0.9rem;">
-                            Format each question with options labeled A), B), C), D) and include "Answer: X" at
-                            the end.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h4 style="color: #8b5cf6; margin-bottom: var(--space-md);">📝 Word Files (.docx)</h4>
-                        <p class="text-muted" style="font-size: 0.9rem;">
-                            Same format as PDF. Each question followed by options and answer.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h4 style="color: #f59e0b; margin-bottom: var(--space-md);">📑 PowerPoint Files (.pptx)
-                        </h4>
-                        <p class="text-muted" style="font-size: 0.9rem;">
-                            One question per slide with options and answer indicated.
-                        </p>
-                    </div>
-                </div>
-
-                <div
-                    style="margin-top: var(--space-xl); padding: var(--space-lg); background: rgba(255, 180, 80, 0.1); border-radius: var(--radius-lg); border: 1px solid rgba(255, 180, 80, 0.3);">
-                    <h4 style="color: #f59e0b; margin-bottom: var(--space-sm);">💡 Tips for Best Results</h4>
-                    <ul class="text-muted" style="margin: 0; padding-left: var(--space-xl); font-size: 0.9rem;">
-                        <li>For Excel: Download the template and fill in your questions</li>
-                        <li>For PDF/Word: Use clear formatting with labeled options (A, B, C, D)</li>
-                        <li>Include "Answer: X" or "Correct: X" for each question</li>
-                        <li>Maximum 15 questions per round will be imported</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Settings Section -->
-    <section class="section hidden" id="section-settings">
-        <div class="admin-header">
-            <h1 class="admin-title">Settings</h1>
-        </div>
-
-        <div class="card">
-            <div class="card-body">
-                <h3 style="margin-bottom: var(--space-lg); color: var(--danger);">⚠️ Danger Zone</h3>
-
-                <div
-                    style="padding: var(--space-lg); background: hsla(0, 70%, 55%, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-lg);">
-                    <h4 style="margin-bottom: var(--space-sm);">Reset Event</h4>
-                    <p class="text-muted" style="margin-bottom: var(--space-lg);">
-                        This will delete all participants, responses, and scores. Questions will also be
-                        removed.
-                        This action cannot be undone.
-                    </p>
-                    <button class="btn btn-danger" id="resetEventBtn">
-                        🗑️ Reset Entire Event
-                    </button>
-                </div>
-            </div>
-        </div>
-    </section>
-    </main>
+            </section>
+        </main>
     </div>
 
     <!-- Confirmation Modal -->
@@ -1234,40 +1311,65 @@
 
             // Render dashboard
             function renderDashboard(data) {
-                // Update stats
-                document.getElementById('totalParticipants').textContent = data.participants.total;
-                document.getElementById('qualifiedParticipants').textContent = data.participants.qualified;
-                document.getElementById('submittedCount').textContent = data.participants.submittedCurrentRound;
-                document.getElementById('currentRoundDisplay').textContent =
-                    data.eventState.currentRound === 0 ? 'Not Started' : `Round ${data.eventState.currentRound}`;
+                // Update stats (with null checks)
+                const setElementText = (id, text) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = text;
+                };
+
+                setElementText('totalParticipants', data.participants.total);
+                setElementText('qualifiedParticipants', data.participants.qualified);
+                setElementText('submittedCount', data.participants.submittedCurrentRound);
+                setElementText('currentRoundDisplay', data.eventState.currentRound === 0 ? 'Not Started' : `Round ${data.eventState.currentRound}`);
 
                 // Update event status
                 const statusDot = document.getElementById('eventStatusDot');
                 const statusText = document.getElementById('eventStatusText');
+                const statusBadge = document.getElementById('eventStatusBadge');
                 const activateContainer = document.getElementById('activateEventContainer');
+                const activateBtn = document.getElementById('activateEventBtn');
 
                 if (!data.eventState.eventActive) {
-                    statusDot.className = 'status-dot inactive';
-                    statusText.textContent = 'Event Not Active';
-                    activateContainer.style.display = 'block';
+                    if (statusDot) statusDot.className = 'status-dot inactive';
+                    if (statusText) statusText.textContent = 'Event Not Active';
+                    if (statusBadge) {
+                        statusBadge.textContent = 'Not Active';
+                        statusBadge.className = 'badge badge-warning';
+                    }
+                    if (activateContainer) activateContainer.style.display = 'block';
+                    if (activateBtn) activateBtn.style.display = 'inline-flex';
                 } else {
-                    activateContainer.style.display = 'none';
+                    if (activateContainer) activateContainer.style.display = 'none';
+                    if (activateBtn) activateBtn.style.display = 'none';
 
                     if (data.eventState.roundStatus === 'running') {
-                        statusDot.className = 'status-dot running';
-                        statusText.textContent = `Round ${data.eventState.currentRound} Running`;
+                        if (statusDot) statusDot.className = 'status-dot running';
+                        if (statusText) statusText.textContent = `Round ${data.eventState.currentRound} Running`;
+                        if (statusBadge) {
+                            statusBadge.textContent = `Round ${data.eventState.currentRound} Running`;
+                            statusBadge.className = 'badge badge-success';
+                        }
                     } else if (data.eventState.roundStatus === 'completed') {
-                        statusDot.className = 'status-dot completed';
-                        statusText.textContent = `Round ${data.eventState.currentRound} Completed`;
+                        if (statusDot) statusDot.className = 'status-dot completed';
+                        if (statusText) statusText.textContent = `Round ${data.eventState.currentRound} Completed`;
+                        if (statusBadge) {
+                            statusBadge.textContent = `Round ${data.eventState.currentRound} Completed`;
+                            statusBadge.className = 'badge badge-primary';
+                        }
                     } else {
-                        statusDot.className = 'status-dot inactive';
-                        statusText.textContent = 'Waiting to Start Round';
+                        if (statusDot) statusDot.className = 'status-dot inactive';
+                        if (statusText) statusText.textContent = 'Waiting to Start Round';
+                        if (statusBadge) {
+                            statusBadge.textContent = 'Event Active';
+                            statusBadge.className = 'badge badge-success';
+                        }
                     }
                 }
 
                 // Render round cards
                 renderRoundCards(data);
             }
+
 
             // Render round cards
             function renderRoundCards(data) {
@@ -1805,45 +1907,37 @@
                     }
                 });
             }
-        });
 
-        // Poll for malpractice updates
-        setInterval(() => {
-            if (document.getElementById('section-dashboard').classList.contains('active')) {
-                loadMalpracticeFeed();
-            }
-        }, 5000);
 
-        // Initial load
-        loadMalpracticeFeed();
 
-        // Load participants
-        async function loadParticipants() {
-            try {
-                const result = await api('/api/admin/participants');
 
-                if (result.success) {
-                    renderParticipants(result.data);
+            // Load participants
+            async function loadParticipants() {
+                try {
+                    const result = await api('/api/admin/participants');
+
+                    if (result.success) {
+                        renderParticipants(result.data);
+                    }
+                } catch (error) {
+                    console.error('Load participants error:', error);
                 }
-            } catch (error) {
-                console.error('Load participants error:', error);
             }
-        }
 
-        // Render participants
-        function renderParticipants(participants) {
-            const tbody = document.getElementById('participantsTableBody');
+            // Render participants
+            function renderParticipants(participants) {
+                const tbody = document.getElementById('participantsTableBody');
 
-            if (!participants || participants.length === 0) {
-                tbody.innerHTML = `
+                if (!participants || participants.length === 0) {
+                    tbody.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center text-muted">No participants yet</td>
                         </tr>
                     `;
-                return;
-            }
+                    return;
+                }
 
-            tbody.innerHTML = participants.map(p => `
+                tbody.innerHTML = participants.map(p => `
                     <tr>
                         <td><code>${p.system_id}</code></td>
                         <td>${p.name}</td>
@@ -1852,46 +1946,46 @@
                         <td>Round ${p.current_round}</td>
                         <td>
                             ${p.is_disqualified ?
-                    '<span class="badge badge-danger">Disqualified</span>' :
-                    p.is_qualified ?
-                        '<span class="badge badge-success">Qualified</span>' :
-                        '<span class="badge badge-neutral">Eliminated</span>'
-                }
+                        '<span class="badge badge-danger">Disqualified</span>' :
+                        p.is_qualified ?
+                            '<span class="badge badge-success">Qualified</span>' :
+                            '<span class="badge badge-neutral">Eliminated</span>'
+                    }
                         </td>
                         <td>${new Date(p.created_at).toLocaleString()}</td>
                     </tr>
                 `).join('');
-        }
-
-        // Load results
-        async function loadResults(roundNumber) {
-            document.getElementById('resultsRoundNumber').textContent = roundNumber;
-
-            try {
-                const result = await api(`/api/admin/results/${roundNumber}`);
-
-                if (result.success) {
-                    renderResults(result.data.results);
-                }
-            } catch (error) {
-                console.error('Load results error:', error);
             }
-        }
 
-        // Render results
-        function renderResults(results) {
-            const tbody = document.getElementById('resultsTableBody');
+            // Load results
+            async function loadResults(roundNumber) {
+                document.getElementById('resultsRoundNumber').textContent = roundNumber;
 
-            if (!results || results.length === 0) {
-                tbody.innerHTML = `
+                try {
+                    const result = await api(`/api/admin/results/${roundNumber}`);
+
+                    if (result.success) {
+                        renderResults(result.data.results);
+                    }
+                } catch (error) {
+                    console.error('Load results error:', error);
+                }
+            }
+
+            // Render results
+            function renderResults(results) {
+                const tbody = document.getElementById('resultsTableBody');
+
+                if (!results || results.length === 0) {
+                    tbody.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center text-muted">No results available for this round</td>
                         </tr>
                     `;
-                return;
-            }
+                    return;
+                }
 
-            tbody.innerHTML = results.map(r => `
+                tbody.innerHTML = results.map(r => `
                     <tr>
                         <td><strong>#${r.rank || '-'}</strong></td>
                         <td><code>${r.participants?.system_id || '-'}</code></td>
@@ -1901,52 +1995,52 @@
                         <td>${r.time_taken_seconds ? formatTime(r.time_taken_seconds) : '-'}</td>
                         <td>
                             ${r.qualified_for_next ?
-                    '<span class="badge badge-success">Qualified</span>' :
-                    '<span class="badge badge-neutral">Eliminated</span>'
-                }
+                        '<span class="badge badge-success">Qualified</span>' :
+                        '<span class="badge badge-neutral">Eliminated</span>'
+                    }
                         </td>
                     </tr>
                 `).join('');
-        }
-
-        // Format time
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}m ${secs}s`;
-        }
-
-        // Export results
-        async function exportResults() {
-            const roundNumber = state.selectedResultsRound;
-            window.location.href = `/api/admin/export/${roundNumber}`;
-        }
-
-        // Load audit logs
-        async function loadAuditLogs() {
-            try {
-                const result = await api('/api/admin/audit-logs');
-
-                if (result.success) {
-                    renderAuditLogs(result.data);
-                }
-            } catch (error) {
-                console.error('Load audit logs error:', error);
             }
-        }
 
-        // Render audit logs
-        function renderAuditLogs(logs) {
-            const container = document.getElementById('auditLogsContainer');
+            // Format time
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins}m ${secs}s`;
+            }
 
-            if (!logs || logs.length === 0) {
-                container.innerHTML = `
+            // Export results
+            async function exportResults() {
+                const roundNumber = state.selectedResultsRound;
+                window.location.href = `/api/admin/export/${roundNumber}`;
+            }
+
+            // Load audit logs
+            async function loadAuditLogs() {
+                try {
+                    const result = await api('/api/admin/audit-logs');
+
+                    if (result.success) {
+                        renderAuditLogs(result.data);
+                    }
+                } catch (error) {
+                    console.error('Load audit logs error:', error);
+                }
+            }
+
+            // Render audit logs
+            function renderAuditLogs(logs) {
+                const container = document.getElementById('auditLogsContainer');
+
+                if (!logs || logs.length === 0) {
+                    container.innerHTML = `
                         <div class="text-center text-muted">No audit logs available</div>
                     `;
-                return;
-            }
+                    return;
+                }
 
-            container.innerHTML = logs.map(log => `
+                container.innerHTML = logs.map(log => `
                     <div class="audit-log-item">
                         <div class="audit-log-time">${new Date(log.created_at).toLocaleString()}</div>
                         <div class="audit-log-content">
@@ -1957,141 +2051,189 @@
                         </div>
                     </div>
                 `).join('');
-        }
-
-        // Reset event
-        async function resetEvent() {
-            const confirmed = await showConfirm(
-                '⚠️ Reset Entire Event',
-                'This will DELETE ALL participants, responses, scores, and questions. This action CANNOT be undone. Are you absolutely sure?',
-                '🗑️'
-            );
-
-            if (!confirmed) return;
-
-            // Double confirmation
-            const doubleConfirmed = await showConfirm(
-                'Final Confirmation',
-                'Type "RESET" mentally and click confirm to proceed with the reset.',
-                '⚠️'
-            );
-
-            if (!doubleConfirmed) return;
-
-            try {
-                const result = await api('/api/admin/reset-event', {
-                    method: 'POST',
-                    body: JSON.stringify({ confirmReset: 'RESET_ALL_DATA' })
-                });
-
-                if (result.success) {
-                    alert('Event has been reset successfully');
-                    loadDashboard();
-                } else {
-                    alert(result.message || 'Reset failed');
-                }
-            } catch (error) {
-                console.error('Reset error:', error);
-                alert('Reset failed');
             }
-        }
 
-        // Auto refresh
-        function startAutoRefresh() {
-            state.refreshInterval = setInterval(() => {
-                if (state.currentSection === 'dashboard') {
-                    loadDashboard();
-                }
-            }, 5000);
-        }
+            // Reset event
+            async function resetEvent() {
+                const confirmed = await showConfirm(
+                    '⚠️ Reset Entire Event',
+                    'This will DELETE ALL participants, responses, scores, and questions. This action CANNOT be undone. Are you absolutely sure?',
+                    '🗑️'
+                );
 
-        function stopAutoRefresh() {
-            if (state.refreshInterval) {
-                clearInterval(state.refreshInterval);
-            }
-        }
+                if (!confirmed) return;
 
-        // Event listeners
-        document.getElementById('loginForm').addEventListener('submit', handleLogin);
-        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-        document.getElementById('activateEventBtn').addEventListener('click', activateEvent);
-        document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
-        document.getElementById('questionForm').addEventListener('submit', saveQuestion);
-        document.getElementById('clearQuestionForm').addEventListener('click', clearQuestionForm);
-        document.getElementById('bulkImportBtn').addEventListener('click', bulkImport);
-        document.getElementById('refreshParticipants').addEventListener('click', loadParticipants);
-        document.getElementById('exportResultsBtn').addEventListener('click', exportResults);
-        document.getElementById('refreshAuditLogs').addEventListener('click', loadAuditLogs);
-        document.getElementById('resetEventBtn').addEventListener('click', resetEvent);
+                // Double confirmation
+                const doubleConfirmed = await showConfirm(
+                    'Final Confirmation',
+                    'Type "RESET" mentally and click confirm to proceed with the reset.',
+                    '⚠️'
+                );
 
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                showSection(item.dataset.section);
-            });
-        });
-
-        // Question round tabs
-        document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.selectedQuestionRound = parseInt(btn.dataset.round);
-                document.getElementById('questionRound').value = btn.dataset.round;
-                loadQuestions(state.selectedQuestionRound);
-            });
-        });
-
-        // Results round tabs
-        document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.selectedResultsRound = parseInt(btn.dataset.round);
-                loadResults(state.selectedResultsRound);
-            });
-        });
-
-        // Handle Round Updates
-        document.querySelectorAll('.update-round-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const btn = e.target;
-                const round = btn.dataset.round;
-                const durationInput = document.getElementById(`duration-r${round}`);
-                const duration = durationInput.value;
-
-                const originalText = btn.textContent;
-                btn.textContent = 'Saving...';
-                btn.disabled = true;
+                if (!doubleConfirmed) return;
 
                 try {
-                    const result = await api('/api/admin/round/update', {
+                    const result = await api('/api/admin/reset-event', {
                         method: 'POST',
-                        body: JSON.stringify({
-                            roundNumber: parseInt(round),
-                            durationMinutes: parseInt(duration)
-                        })
+                        body: JSON.stringify({ confirmReset: 'RESET_ALL_DATA' })
                     });
 
                     if (result.success) {
-                        alert(`Round ${round} settings updated!`);
+                        alert('Event has been reset successfully');
+                        loadDashboard();
                     } else {
-                        alert(result.message || 'Failed to update round');
+                        alert(result.message || 'Reset failed');
                     }
                 } catch (error) {
-                    console.error('Update round error:', error);
-                    alert('Error updating round settings');
-                } finally {
-                    btn.textContent = originalText;
-                    btn.disabled = false;
+                    console.error('Reset error:', error);
+                    alert('Reset failed');
                 }
-            });
-        });
+            }
 
-        // Initialize
-        initFileUpload();
-        checkSession();
-        }) ();
+            // Auto refresh
+            function startAutoRefresh() {
+                if (state.refreshInterval) return;
+
+                // Initial load of dashboard and malpractice feed
+                loadDashboard();
+                loadMalpracticeFeed();
+
+                state.refreshInterval = setInterval(() => {
+                    if (state.currentSection === 'dashboard') {
+                        loadDashboard();
+                        loadMalpracticeFeed();
+                    } else if (state.currentSection === 'participants') {
+                        loadParticipants();
+                    } else if (state.currentSection === 'results') {
+                        loadResults(state.selectedResultsRound);
+                    } else if (state.currentSection === 'audit') {
+                        loadAuditLogs();
+                    }
+                }, 5000);
+            }
+
+
+            function stopAutoRefresh() {
+                if (state.refreshInterval) {
+                    clearInterval(state.refreshInterval);
+                }
+            }
+
+            // Event listeners (with null checks for robustness)
+            const addSafeEventListener = (id, event, handler) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener(event, handler);
+                else console.warn(`Element #${id} not found`);
+            };
+
+            addSafeEventListener('loginForm', 'submit', handleLogin);
+            addSafeEventListener('logoutBtn', 'click', handleLogout);
+            addSafeEventListener('activateEventBtn', 'click', activateEvent);
+            addSafeEventListener('refreshDashboard', 'click', loadDashboard);
+            addSafeEventListener('questionForm', 'submit', saveQuestion);
+            addSafeEventListener('clearQuestionForm', 'click', clearQuestionForm);
+            addSafeEventListener('bulkImportBtn', 'click', bulkImport);
+            addSafeEventListener('refreshParticipants', 'click', loadParticipants);
+            addSafeEventListener('exportResultsBtn', 'click', exportResults);
+            addSafeEventListener('refreshAuditLogs', 'click', loadAuditLogs);
+            addSafeEventListener('resetEventBtn', 'click', resetEvent);
+
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    showSection(item.dataset.section);
+                });
+            });
+
+            // Question round tabs
+            document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#questionRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.selectedQuestionRound = parseInt(btn.dataset.round);
+                    document.getElementById('questionRound').value = btn.dataset.round;
+                    loadQuestions(state.selectedQuestionRound);
+                });
+            });
+
+            // Results round tabs
+            document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.selectedResultsRound = parseInt(btn.dataset.round);
+                    loadResults(state.selectedResultsRound);
+                });
+            });
+
+            // Handle Round Updates
+            document.querySelectorAll('.update-round-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const btn = e.target;
+                    const round = btn.dataset.round;
+                    const durationInput = document.getElementById(`duration-r${round}`);
+                    const duration = durationInput.value;
+
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Saving...';
+                    btn.disabled = true;
+
+                    try {
+                        const result = await api('/api/admin/round/update', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                roundNumber: parseInt(round),
+                                durationMinutes: parseInt(duration)
+                            })
+                        });
+
+                        if (result.success) {
+                            alert(`Round ${round} settings updated!`);
+                        } else {
+                            alert(result.message || 'Failed to update round');
+                        }
+                    } catch (error) {
+                        console.error('Update round error:', error);
+                        alert('Error updating round settings');
+                    } finally {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                });
+            });
+
+            // Initialize
+            initFileUpload();
+
+            // Mobile Menu Toggle
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.querySelector('.admin-sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            function toggleMobileMenu() {
+                sidebar?.classList.toggle('open');
+                sidebarOverlay?.classList.toggle('active');
+            }
+
+            function closeMobileMenu() {
+                sidebar?.classList.remove('open');
+                sidebarOverlay?.classList.remove('active');
+            }
+
+            mobileMenuToggle?.addEventListener('click', toggleMobileMenu);
+            sidebarOverlay?.addEventListener('click', closeMobileMenu);
+
+            // Close menu when clicking a nav item (on mobile)
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        closeMobileMenu();
+                    }
+                });
+            });
+
+            checkSession();
+        })();
     </script>
 
     <!-- Three.js Library for 3D Admin Background -->
