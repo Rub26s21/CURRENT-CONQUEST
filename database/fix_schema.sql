@@ -1,22 +1,27 @@
 -- ============================================================
--- QUIZ CONQUEST - COMPLETE Database Fix Script
+-- QUIZ CONQUEST - COMPLETE Database Fix Script v2
 -- ============================================================
 -- 
--- INSTRUCTIONS:
--- 1. Go to your Supabase Dashboard: https://supabase.com/dashboard
--- 2. Select your project
--- 3. Go to SQL Editor (left sidebar)
--- 4. Copy and paste this entire script
--- 5. Click "Run" to execute
+-- This fixes the college_or_phone column issue
 -- ============================================================
 
--- First, check current columns
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'participants'
-ORDER BY ordinal_position;
+-- OPTION 1: If you want to keep the old column and use it
+-- Uncomment the line below and comment out OPTION 2
+-- ALTER TABLE participants ALTER COLUMN college_or_phone DROP NOT NULL;
 
--- Add ALL missing columns to participants table
+-- OPTION 2: Drop the old column and use the new ones (RECOMMENDED)
+-- First, make the old column nullable or drop it
+
+-- Make college_or_phone nullable (in case it exists with NOT NULL)
+DO $$
+BEGIN
+    ALTER TABLE participants ALTER COLUMN college_or_phone DROP NOT NULL;
+EXCEPTION
+    WHEN undefined_column THEN NULL;
+    WHEN others THEN NULL;
+END $$;
+
+-- Add ALL columns we need
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS college_name VARCHAR(150);
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20);
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS session_token VARCHAR(255);
@@ -27,41 +32,17 @@ ALTER TABLE participants ADD COLUMN IF NOT EXISTS disqualification_reason TEXT;
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS current_round INTEGER DEFAULT 1;
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS last_activity TIMESTAMPTZ DEFAULT NOW();
 
--- Set default values for any existing rows
-UPDATE participants SET college_name = 'Not Specified' WHERE college_name IS NULL;
-UPDATE participants SET phone_number = '0000000000' WHERE phone_number IS NULL;
+-- Set default values
 UPDATE participants SET is_active = TRUE WHERE is_active IS NULL;
 UPDATE participants SET is_qualified = TRUE WHERE is_qualified IS NULL;
 UPDATE participants SET is_disqualified = FALSE WHERE is_disqualified IS NULL;
 UPDATE participants SET current_round = 1 WHERE current_round IS NULL;
 
--- Ensure event_state has a record with event_active = TRUE for testing
-INSERT INTO event_state (id, current_round, round_status, event_active)
-VALUES (1, 0, 'not_started', true)
-ON CONFLICT (id) DO UPDATE SET event_active = true;
+-- Enable event for testing
+UPDATE event_state SET event_active = true WHERE id = 1;
 
--- Ensure rounds are properly set up
-INSERT INTO rounds (round_number, qualification_percentage, total_questions, duration_minutes)
-VALUES 
-    (1, 50.00, 15, 15),
-    (2, 50.00, 15, 15),
-    (3, 100.00, 15, 15)
-ON CONFLICT (round_number) DO UPDATE SET
-    total_questions = 15,
-    duration_minutes = COALESCE(rounds.duration_minutes, 15);
-
--- Verify the fix worked
-SELECT 'Updated participants columns:' as info;
-SELECT column_name, data_type 
+-- Verify columns
+SELECT column_name, data_type, is_nullable
 FROM information_schema.columns 
 WHERE table_name = 'participants'
 ORDER BY ordinal_position;
-
-SELECT 'event_state (should show event_active = true):' as info;
-SELECT * FROM event_state WHERE id = 1;
-
--- ============================================================
--- EXPECTED OUTPUT:
--- You should see college_name and phone_number in the columns list
--- event_active should be TRUE
--- ============================================================
