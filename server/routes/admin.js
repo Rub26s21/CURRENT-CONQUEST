@@ -749,9 +749,10 @@ router.get('/export/:roundNumber', requireAdmin, async (req, res) => {
  * POST /api/admin/reset-event
  * Reset entire event (USE WITH CAUTION)
  */
+// Reset entire event (USE WITH CAUTION)
 router.post('/reset-event', requireAdmin, async (req, res) => {
     try {
-        const { confirmReset } = req.body;
+        const { confirmReset, keepQuestions } = req.body;
 
         if (confirmReset !== 'RESET_ALL_DATA') {
             return res.status(400).json({
@@ -765,7 +766,12 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
         await supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('responses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('exam_sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+        // Only delete questions if explicitly requested (default is to keep them)
+        if (!keepQuestions) {
+            await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        }
+
         await supabase.from('participants').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
         // Reset rounds
@@ -801,6 +807,41 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to reset event'
+        });
+    }
+});
+
+/**
+ * GET /api/admin/malpractice-logs
+ * Get recent malpractice events (tab switches)
+ */
+router.get('/malpractice-logs', requireAdmin, async (req, res) => {
+    try {
+        const { data: logs, error } = await supabase
+            .from('audit_logs')
+            .select(`
+                *,
+                participants:participant_id (
+                    system_id,
+                    name,
+                    college_name
+                )
+            `)
+            .in('action', ['TAB_SWITCH_WARNING', 'AUTO_SUBMIT_VIOLATION'])
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            data: logs || []
+        });
+    } catch (error) {
+        console.error('Malpractice logs fetch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch malpractice logs'
         });
     }
 });

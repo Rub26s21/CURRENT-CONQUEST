@@ -559,6 +559,32 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Reset Event Zone -->
+                <div class="card" style="margin-top: var(--space-xl); border: 1px solid var(--danger);">
+                    <div class="card-body">
+                        <h3 class="text-danger">⚠️ Danger Zone</h3>
+                        <p class="text-muted">Resetting the event will delete all participants, scores, and exam
+                            history.</p>
+
+                        <div class="form-group" style="margin-top: var(--space-md);">
+                            <label class="form-label">
+                                <input type="checkbox" id="keepQuestionsCheck" checked>
+                                Keep Question Bank (Recommended)
+                            </label>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">
+                                If unchecked, all questions will also be deleted.
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Type "RESET_ALL_DATA" to confirm</label>
+                            <input type="text" id="resetConfirmation" class="form-input" placeholder="RESET_ALL_DATA">
+                        </div>
+
+                        <button class="btn btn-danger" id="resetEventBtn">Reset Entire Event</button>
+                    </div>
+                </div>
             </section>
             <!-- Dashboard Section -->
             <section class="section" id="section-dashboard">
@@ -599,239 +625,258 @@
                 <div class="round-control">
                     <div class="round-control-header">
                         <h2>Event Control</h2>
-                        <div class="round-status-indicator">
-                            <span class="status-dot" id="eventStatusDot"></span>
-                            <span id="eventStatusText">Loading...</span>
-                        </div>
-                    </div>
-
-                    <div id="activateEventContainer" style="margin-bottom: var(--space-xl);">
-                        <button class="btn btn-success btn-lg" id="activateEventBtn">
-                            🚀 Activate Event
-                        </button>
-                        <p class="text-muted" style="margin-top: var(--space-sm);">
-                            Activating the event allows participants to login.
-                        </p>
+                        <span class="badge badge-neutral" id="eventStatusBadge">Not Started</span>
                     </div>
 
                     <div class="round-cards" id="roundCards">
-                        <!-- Round cards will be rendered here -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Questions Section -->
-            <section class="section hidden" id="section-questions">
-                <div class="admin-header">
-                    <h1 class="admin-title">Question Management</h1>
-                </div>
-
-                <!-- Round Selector -->
-                <div class="tab-nav" id="questionRoundTabs">
-                    <button class="tab-btn active" data-round="1">Round 1</button>
-                    <button class="tab-btn" data-round="2">Round 2</button>
-                    <button class="tab-btn" data-round="3">Round 3</button>
-                </div>
-
-                <!-- Question Form -->
-                <div class="question-form-container">
-                    <h3 style="margin-bottom: var(--space-lg);">Add/Edit Question</h3>
-                    <form id="questionForm">
-                        <input type="hidden" id="editQuestionId">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Round</label>
-                                <select id="questionRound" class="form-input form-select">
-                                    <option value="1">Round 1</option>
-                                    <option value="2">Round 2</option>
-                                    <option value="3">Round 3</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Question Number (1-15)</label>
-                                <input type="number" id="questionNumber" class="form-input" min="1" max="15" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Question Text</label>
-                            <textarea id="questionText" class="form-input form-textarea" rows="3" required></textarea>
-                        </div>
-                        <div class="options-grid">
-                            <div class="form-group">
-                                <label class="form-label">Option A</label>
-                                <input type="text" id="optionA" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Option B</label>
-                                <input type="text" id="optionB" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Option C</label>
-                                <input type="text" id="optionC" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Option D</label>
-                                <input type="text" id="optionD" class="form-input" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Correct Answer</label>
-                            <select id="correctOption" class="form-input form-select" required>
-                                <option value="">Select correct option</option>
-                                <option value="A">Option A</option>
-                                <option value="B">Option B</option>
-                                <option value="C">Option C</option>
-                                <option value="D">Option D</option>
-                            </select>
-                        </div>
-                        <div id="questionFormError" class="alert alert-danger" style="display: none;"></div>
-                        <div style="display: flex; gap: var(--space-md);">
-                            <button type="submit" class="btn btn-primary" id="saveQuestionBtn">
-                                Save Question
-                            </button>
-                            <button type="button" class="btn btn-secondary" id="clearQuestionForm">
-                                Clear Form
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Questions List -->
-                <div class="question-list" id="questionsList">
-                    <div class="text-center text-muted" style="padding: var(--space-xl);">
-                        No questions added yet
+                        <!-- Round cards will be injected here -->
                     </div>
                 </div>
 
-                <!-- Bulk Import -->
-                <div class="bulk-import">
-                    <h4 style="margin-bottom: var(--space-md);">Bulk Import Questions</h4>
-                    <p class="text-muted" style="margin-bottom: var(--space-lg);">
-                        Paste JSON array of questions or upload a JSON file
-                    </p>
-                    <textarea id="bulkImportData" class="form-input form-textarea" rows="5"
-                        placeholder='[{"questionText": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctOption": "A"}]'></textarea>
-                    <div
-                        style="display: flex; gap: var(--space-md); justify-content: center; margin-top: var(--space-md);">
-                        <button class="btn btn-primary" id="bulkImportBtn">Import Questions</button>
+                <!-- Malpractice Feed -->
+                <div class="card" style="margin-top: var(--space-xl);">
+                    <div class="card-header"
+                        style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-lg); border-bottom: 1px solid var(--border-color);">
+                        <h3 style="margin: 0;">⚠️ Live Malpractice Feed</h3>
+                        <span class="badge badge-danger" style="animation: pulse 2s infinite;">Live</span>
+                    </div>
+                    <div class="audit-log-container" id="malpracticeFeed" style="max-height: 300px; overflow-y: auto;">
+                        <div class="text-center text-muted" style="padding: var(--space-lg);">No recent violations</div>
                     </div>
                 </div>
-            </section>
-
-            <!-- Participants Section -->
-            <section class="section hidden" id="section-participants">
-                <div class="admin-header">
-                    <h1 class="admin-title">Participants</h1>
-                    <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
+                <h2>Event Control</h2>
+                <div class="round-status-indicator">
+                    <span class="status-dot" id="eventStatusDot"></span>
+                    <span id="eventStatusText">Loading...</span>
                 </div>
+    </div>
 
-                <div class="table-container">
-                    <table class="table" id="participantsTable">
-                        <thead>
-                            <tr>
-                                <th>System ID</th>
-                                <th>Name</th>
-                                <th>College</th>
-                                <th>Phone</th>
-                                <th>Current Round</th>
-                                <th>Status</th>
-                                <th>Joined At</th>
-                            </tr>
-                        </thead>
-                        <tbody id="participantsTableBody">
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+    <div id="activateEventContainer" style="margin-bottom: var(--space-xl);">
+        <button class="btn btn-success btn-lg" id="activateEventBtn">
+            🚀 Activate Event
+        </button>
+        <p class="text-muted" style="margin-top: var(--space-sm);">
+            Activating the event allows participants to login.
+        </p>
+    </div>
 
-            <!-- Results Section -->
-            <section class="section hidden" id="section-results">
-                <div class="admin-header">
-                    <h1 class="admin-title">Results</h1>
-                </div>
+    <div class="round-cards" id="roundCards">
+        <!-- Round cards will be rendered here -->
+    </div>
+    </div>
+    </section>
 
-                <!-- Round Selector -->
-                <div class="tab-nav" id="resultsRoundTabs">
-                    <button class="tab-btn active" data-round="1">Round 1</button>
-                    <button class="tab-btn" data-round="2">Round 2</button>
-                    <button class="tab-btn" data-round="3">Round 3</button>
-                </div>
+    <!-- Questions Section -->
+    <section class="section hidden" id="section-questions">
+        <div class="admin-header">
+            <h1 class="admin-title">Question Management</h1>
+        </div>
 
-                <div class="results-container">
-                    <div class="results-header">
-                        <h3>Round <span id="resultsRoundNumber">1</span> Results</h3>
-                        <button class="btn btn-primary" id="exportResultsBtn">📥 Export CSV</button>
+        <!-- Round Selector -->
+        <div class="tab-nav" id="questionRoundTabs">
+            <button class="tab-btn active" data-round="1">Round 1</button>
+            <button class="tab-btn" data-round="2">Round 2</button>
+            <button class="tab-btn" data-round="3">Round 3</button>
+        </div>
+
+        <!-- Question Form -->
+        <div class="question-form-container">
+            <h3 style="margin-bottom: var(--space-lg);">Add/Edit Question</h3>
+            <form id="questionForm">
+                <input type="hidden" id="editQuestionId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Round</label>
+                        <select id="questionRound" class="form-input form-select">
+                            <option value="1">Round 1</option>
+                            <option value="2">Round 2</option>
+                            <option value="3">Round 3</option>
+                        </select>
                     </div>
-                    <table class="table" id="resultsTable">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>System ID</th>
-                                <th>Name</th>
-                                <th>College/Phone</th>
-                                <th>Score</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resultsTableBody">
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">Select a round to view results</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Audit Logs Section -->
-            <section class="section hidden" id="section-audit">
-                <div class="admin-header">
-                    <h1 class="admin-title">Audit Logs</h1>
-                    <button class="btn btn-secondary" id="refreshAuditLogs">🔄 Refresh</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-body" id="auditLogsContainer" style="max-height: 600px; overflow-y: auto;">
-                        <div class="text-center text-muted">Loading audit logs...</div>
+                    <div class="form-group">
+                        <label class="form-label">Question Number (1-15)</label>
+                        <input type="number" id="questionNumber" class="form-input" min="1" max="15" required>
                     </div>
                 </div>
-            </section>
-
-            <!-- File Upload Section -->
-            <section class="section hidden" id="section-file-upload">
-                <div class="admin-header">
-                    <h1 class="admin-title">📁 File Upload</h1>
-                    <div class="admin-actions">
-                        <span class="text-muted" style="font-size: 0.9rem; margin-right: 10px;">Download
-                            Template:</span>
-                        <a href="/api/upload/template?format=excel" class="btn btn-sm btn-secondary">📊 Excel</a>
-                        <a href="/api/upload/template?format=word" class="btn btn-sm btn-secondary">📝 Word</a>
-                        <a href="/api/upload/template?format=pdf" class="btn btn-sm btn-secondary">📄 PDF</a>
-                        <a href="/api/upload/template?format=ppt" class="btn btn-sm btn-secondary">📑 PPT</a>
+                <div class="form-group">
+                    <label class="form-label">Question Text</label>
+                    <textarea id="questionText" class="form-input form-textarea" rows="3" required></textarea>
+                </div>
+                <div class="options-grid">
+                    <div class="form-group">
+                        <label class="form-label">Option A</label>
+                        <input type="text" id="optionA" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Option B</label>
+                        <input type="text" id="optionB" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Option C</label>
+                        <input type="text" id="optionC" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Option D</label>
+                        <input type="text" id="optionD" class="form-input" required>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Correct Answer</label>
+                    <select id="correctOption" class="form-input form-select" required>
+                        <option value="">Select correct option</option>
+                        <option value="A">Option A</option>
+                        <option value="B">Option B</option>
+                        <option value="C">Option C</option>
+                        <option value="D">Option D</option>
+                    </select>
+                </div>
+                <div id="questionFormError" class="alert alert-danger" style="display: none;"></div>
+                <div style="display: flex; gap: var(--space-md);">
+                    <button type="submit" class="btn btn-primary" id="saveQuestionBtn">
+                        Save Question
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="clearQuestionForm">
+                        Clear Form
+                    </button>
+                </div>
+            </form>
+        </div>
 
-                <div class="card">
-                    <div class="card-body">
-                        <h3 style="margin-bottom: var(--space-lg);">Import Questions from File</h3>
-                        <p class="text-muted" style="margin-bottom: var(--space-xl);">
-                            Upload questions from Excel, PDF, Word, or PowerPoint files.
-                            Maximum 15 questions per round will be imported.
-                        </p>
+        <!-- Questions List -->
+        <div class="question-list" id="questionsList">
+            <div class="text-center text-muted" style="padding: var(--space-xl);">
+                No questions added yet
+            </div>
+        </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Select Round</label>
-                            <select id="fileUploadRound" class="form-input" style="max-width: 200px;">
-                                <option value="1">Round 1</option>
-                                <option value="2">Round 2</option>
-                                <option value="3">Round 3</option>
-                            </select>
-                        </div>
+        <!-- Bulk Import -->
+        <div class="bulk-import">
+            <h4 style="margin-bottom: var(--space-md);">Bulk Import Questions</h4>
+            <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                Paste JSON array of questions or upload a JSON file
+            </p>
+            <textarea id="bulkImportData" class="form-input form-textarea" rows="5"
+                placeholder='[{"questionText": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctOption": "A"}]'></textarea>
+            <div style="display: flex; gap: var(--space-md); justify-content: center; margin-top: var(--space-md);">
+                <button class="btn btn-primary" id="bulkImportBtn">Import Questions</button>
+            </div>
+        </div>
+    </section>
 
-                        <div class="file-upload-area" id="fileDropZone" style="
+    <!-- Participants Section -->
+    <section class="section hidden" id="section-participants">
+        <div class="admin-header">
+            <h1 class="admin-title">Participants</h1>
+            <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="participantsTable">
+                <thead>
+                    <tr>
+                        <th>System ID</th>
+                        <th>Name</th>
+                        <th>College</th>
+                        <th>Phone</th>
+                        <th>Current Round</th>
+                        <th>Status</th>
+                        <th>Joined At</th>
+                    </tr>
+                </thead>
+                <tbody id="participantsTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="section hidden" id="section-results">
+        <div class="admin-header">
+            <h1 class="admin-title">Results</h1>
+        </div>
+
+        <!-- Round Selector -->
+        <div class="tab-nav" id="resultsRoundTabs">
+            <button class="tab-btn active" data-round="1">Round 1</button>
+            <button class="tab-btn" data-round="2">Round 2</button>
+            <button class="tab-btn" data-round="3">Round 3</button>
+        </div>
+
+        <div class="results-container">
+            <div class="results-header">
+                <h3>Round <span id="resultsRoundNumber">1</span> Results</h3>
+                <button class="btn btn-primary" id="exportResultsBtn">📥 Export CSV</button>
+            </div>
+            <table class="table" id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>System ID</th>
+                        <th>Name</th>
+                        <th>College/Phone</th>
+                        <th>Score</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">Select a round to view results</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Audit Logs Section -->
+    <section class="section hidden" id="section-audit">
+        <div class="admin-header">
+            <h1 class="admin-title">Audit Logs</h1>
+            <button class="btn btn-secondary" id="refreshAuditLogs">🔄 Refresh</button>
+        </div>
+
+        <div class="card">
+            <div class="card-body" id="auditLogsContainer" style="max-height: 600px; overflow-y: auto;">
+                <div class="text-center text-muted">Loading audit logs...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- File Upload Section -->
+    <section class="section hidden" id="section-file-upload">
+        <div class="admin-header">
+            <h1 class="admin-title">📁 File Upload</h1>
+            <div class="admin-actions">
+                <span class="text-muted" style="font-size: 0.9rem; margin-right: 10px;">Download
+                    Template:</span>
+                <a href="/api/upload/template?format=excel" class="btn btn-sm btn-secondary">📊 Excel</a>
+                <a href="/api/upload/template?format=word" class="btn btn-sm btn-secondary">📝 Word</a>
+                <a href="/api/upload/template?format=pdf" class="btn btn-sm btn-secondary">📄 PDF</a>
+                <a href="/api/upload/template?format=ppt" class="btn btn-sm btn-secondary">📑 PPT</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h3 style="margin-bottom: var(--space-lg);">Import Questions from File</h3>
+                <p class="text-muted" style="margin-bottom: var(--space-xl);">
+                    Upload questions from Excel, PDF, Word, or PowerPoint files.
+                    Maximum 15 questions per round will be imported.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Select Round</label>
+                    <select id="fileUploadRound" class="form-input" style="max-width: 200px;">
+                        <option value="1">Round 1</option>
+                        <option value="2">Round 2</option>
+                        <option value="3">Round 3</option>
+                    </select>
+                </div>
+
+                <div class="file-upload-area" id="fileDropZone" style="
                             border: 2px dashed rgba(255, 100, 60, 0.4);
                             border-radius: var(--radius-xl);
                             padding: var(--space-3xl);
@@ -841,129 +886,129 @@
                             background: rgba(255, 100, 60, 0.05);
                             margin-bottom: var(--space-xl);
                         ">
-                            <div style="font-size: 3rem; margin-bottom: var(--space-lg);">📤</div>
-                            <h3 style="margin-bottom: var(--space-md);">Drag & Drop File Here</h3>
-                            <p class="text-muted" style="margin-bottom: var(--space-lg);">or click to browse</p>
-                            <input type="file" id="fileUploadInput" style="display: none;"
-                                accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt">
-                            <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
-                                <span class="badge badge-primary">📊 Excel</span>
-                                <span class="badge badge-primary">📄 PDF</span>
-                                <span class="badge badge-primary">📝 Word</span>
-                                <span class="badge badge-primary">📑 PowerPoint</span>
-                            </div>
-                        </div>
-
-                        <div id="fileUploadProgress" style="display: none; margin-bottom: var(--space-xl);">
-                            <div style="display: flex; align-items: center; gap: var(--space-md);">
-                                <div class="spinner"></div>
-                                <span id="fileUploadStatus">Processing file...</span>
-                            </div>
-                        </div>
-
-                        <div id="fileUploadResult" style="display: none; margin-bottom: var(--space-xl);">
-                            <div class="alert alert-success" id="fileUploadSuccess" style="display: none;"></div>
-                            <div class="alert alert-danger" id="fileUploadError" style="display: none;"></div>
-                        </div>
-
-                        <div id="uploadedQuestionsPreview" style="display: none;">
-                            <h4 style="margin-bottom: var(--space-lg);">📋 Imported Questions Preview</h4>
-                            <div class="table-container">
-                                <table class="table" id="previewTable">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Question Preview</th>
-                                            <th>Answer</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="previewTableBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div style="font-size: 3rem; margin-bottom: var(--space-lg);">📤</div>
+                    <h3 style="margin-bottom: var(--space-md);">Drag & Drop File Here</h3>
+                    <p class="text-muted" style="margin-bottom: var(--space-lg);">or click to browse</p>
+                    <input type="file" id="fileUploadInput" style="display: none;"
+                        accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt">
+                    <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
+                        <span class="badge badge-primary">📊 Excel</span>
+                        <span class="badge badge-primary">📄 PDF</span>
+                        <span class="badge badge-primary">📝 Word</span>
+                        <span class="badge badge-primary">📑 PowerPoint</span>
                     </div>
                 </div>
 
-                <div class="card" style="margin-top: var(--space-xl);">
-                    <div class="card-body">
-                        <h3 style="margin-bottom: var(--space-lg);">📖 Supported Formats</h3>
-
-                        <div
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-xl);">
-                            <div>
-                                <h4 style="color: #10b981; margin-bottom: var(--space-md);">📊 Excel Files (.xlsx, .xls)
-                                </h4>
-                                <p class="text-muted" style="font-size: 0.9rem;">
-                                    Use columns: <strong>Question, Option A, Option B, Option C, Option D,
-                                        Correct</strong><br>
-                                    The correct answer should be A, B, C, or D.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 style="color: #3b82f6; margin-bottom: var(--space-md);">📄 PDF Files (.pdf)</h4>
-                                <p class="text-muted" style="font-size: 0.9rem;">
-                                    Format each question with options labeled A), B), C), D) and include "Answer: X" at
-                                    the end.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 style="color: #8b5cf6; margin-bottom: var(--space-md);">📝 Word Files (.docx)</h4>
-                                <p class="text-muted" style="font-size: 0.9rem;">
-                                    Same format as PDF. Each question followed by options and answer.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 style="color: #f59e0b; margin-bottom: var(--space-md);">📑 PowerPoint Files (.pptx)
-                                </h4>
-                                <p class="text-muted" style="font-size: 0.9rem;">
-                                    One question per slide with options and answer indicated.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            style="margin-top: var(--space-xl); padding: var(--space-lg); background: rgba(255, 180, 80, 0.1); border-radius: var(--radius-lg); border: 1px solid rgba(255, 180, 80, 0.3);">
-                            <h4 style="color: #f59e0b; margin-bottom: var(--space-sm);">💡 Tips for Best Results</h4>
-                            <ul class="text-muted" style="margin: 0; padding-left: var(--space-xl); font-size: 0.9rem;">
-                                <li>For Excel: Download the template and fill in your questions</li>
-                                <li>For PDF/Word: Use clear formatting with labeled options (A, B, C, D)</li>
-                                <li>Include "Answer: X" or "Correct: X" for each question</li>
-                                <li>Maximum 15 questions per round will be imported</li>
-                            </ul>
-                        </div>
+                <div id="fileUploadProgress" style="display: none; margin-bottom: var(--space-xl);">
+                    <div style="display: flex; align-items: center; gap: var(--space-md);">
+                        <div class="spinner"></div>
+                        <span id="fileUploadStatus">Processing file...</span>
                     </div>
                 </div>
-            </section>
 
-            <!-- Settings Section -->
-            <section class="section hidden" id="section-settings">
-                <div class="admin-header">
-                    <h1 class="admin-title">Settings</h1>
+                <div id="fileUploadResult" style="display: none; margin-bottom: var(--space-xl);">
+                    <div class="alert alert-success" id="fileUploadSuccess" style="display: none;"></div>
+                    <div class="alert alert-danger" id="fileUploadError" style="display: none;"></div>
                 </div>
 
-                <div class="card">
-                    <div class="card-body">
-                        <h3 style="margin-bottom: var(--space-lg); color: var(--danger);">⚠️ Danger Zone</h3>
-
-                        <div
-                            style="padding: var(--space-lg); background: hsla(0, 70%, 55%, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-lg);">
-                            <h4 style="margin-bottom: var(--space-sm);">Reset Event</h4>
-                            <p class="text-muted" style="margin-bottom: var(--space-lg);">
-                                This will delete all participants, responses, and scores. Questions will also be
-                                removed.
-                                This action cannot be undone.
-                            </p>
-                            <button class="btn btn-danger" id="resetEventBtn">
-                                🗑️ Reset Entire Event
-                            </button>
-                        </div>
+                <div id="uploadedQuestionsPreview" style="display: none;">
+                    <h4 style="margin-bottom: var(--space-lg);">📋 Imported Questions Preview</h4>
+                    <div class="table-container">
+                        <table class="table" id="previewTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Question Preview</th>
+                                    <th>Answer</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody"></tbody>
+                        </table>
                     </div>
                 </div>
-            </section>
-        </main>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: var(--space-xl);">
+            <div class="card-body">
+                <h3 style="margin-bottom: var(--space-lg);">📖 Supported Formats</h3>
+
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-xl);">
+                    <div>
+                        <h4 style="color: #10b981; margin-bottom: var(--space-md);">📊 Excel Files (.xlsx, .xls)
+                        </h4>
+                        <p class="text-muted" style="font-size: 0.9rem;">
+                            Use columns: <strong>Question, Option A, Option B, Option C, Option D,
+                                Correct</strong><br>
+                            The correct answer should be A, B, C, or D.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 style="color: #3b82f6; margin-bottom: var(--space-md);">📄 PDF Files (.pdf)</h4>
+                        <p class="text-muted" style="font-size: 0.9rem;">
+                            Format each question with options labeled A), B), C), D) and include "Answer: X" at
+                            the end.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 style="color: #8b5cf6; margin-bottom: var(--space-md);">📝 Word Files (.docx)</h4>
+                        <p class="text-muted" style="font-size: 0.9rem;">
+                            Same format as PDF. Each question followed by options and answer.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h4 style="color: #f59e0b; margin-bottom: var(--space-md);">📑 PowerPoint Files (.pptx)
+                        </h4>
+                        <p class="text-muted" style="font-size: 0.9rem;">
+                            One question per slide with options and answer indicated.
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: var(--space-xl); padding: var(--space-lg); background: rgba(255, 180, 80, 0.1); border-radius: var(--radius-lg); border: 1px solid rgba(255, 180, 80, 0.3);">
+                    <h4 style="color: #f59e0b; margin-bottom: var(--space-sm);">💡 Tips for Best Results</h4>
+                    <ul class="text-muted" style="margin: 0; padding-left: var(--space-xl); font-size: 0.9rem;">
+                        <li>For Excel: Download the template and fill in your questions</li>
+                        <li>For PDF/Word: Use clear formatting with labeled options (A, B, C, D)</li>
+                        <li>Include "Answer: X" or "Correct: X" for each question</li>
+                        <li>Maximum 15 questions per round will be imported</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Settings Section -->
+    <section class="section hidden" id="section-settings">
+        <div class="admin-header">
+            <h1 class="admin-title">Settings</h1>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h3 style="margin-bottom: var(--space-lg); color: var(--danger);">⚠️ Danger Zone</h3>
+
+                <div
+                    style="padding: var(--space-lg); background: hsla(0, 70%, 55%, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-lg);">
+                    <h4 style="margin-bottom: var(--space-sm);">Reset Event</h4>
+                    <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                        This will delete all participants, responses, and scores. Questions will also be
+                        removed.
+                        This action cannot be undone.
+                    </p>
+                    <button class="btn btn-danger" id="resetEventBtn">
+                        🗑️ Reset Entire Event
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+    </main>
     </div>
 
     <!-- Confirmation Modal -->
@@ -1679,6 +1724,74 @@
                     errorDiv.innerHTML = `<strong>❌ Error:</strong> Failed to upload file. ${error.message}`;
                 }
             }
+
+            // Load Malpractice Feed
+            async function loadMalpracticeFeed() {
+                try {
+                    const result = await api('/api/admin/malpractice-logs');
+                    const feed = document.getElementById('malpracticeFeed');
+
+                    if (result.success && result.data.length > 0) {
+                        feed.innerHTML = result.data.map(log => `
+                            <div class="audit-log-item" style="border-left: 3px solid var(--danger);">
+                                <div class="audit-log-time">${new Date(log.created_at).toLocaleTimeString()}</div>
+                                <div class="audit-log-content">
+                                    <div><strong>${log.participants?.name || 'Unknown'}</strong> (${log.participants?.system_id || '?'})</div>
+                                    <div style="color: var(--danger);">${log.details}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">${log.participants?.college_name || '-'}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        feed.innerHTML = '<div class="text-center text-muted" style="padding: var(--space-lg);">No recent violations</div>';
+                    }
+                } catch (error) {
+                    console.error('Load malpractice feed error:', error);
+                }
+            }
+
+            // Initialize Reset Event Button
+            document.getElementById('resetEventBtn').addEventListener('click', async () => {
+                const confirmation = document.getElementById('resetConfirmation').value;
+                const keepQuestions = document.getElementById('keepQuestionsCheck').checked;
+
+                if (confirmation !== 'RESET_ALL_DATA') {
+                    alert('Please type RESET_ALL_DATA to confirm.');
+                    return;
+                }
+
+                if (!confirm('Are you ABSOLUTELY SURE? This cannot be undone.')) return;
+
+                try {
+                    const result = await api('/api/admin/reset-event', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            confirmReset: confirmation,
+                            keepQuestions: keepQuestions
+                        })
+                    });
+
+                    if (result.success) {
+                        alert('Event has been successfully reset.');
+                        window.location.reload();
+                    } else {
+                        alert('Failed to reset event: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Reset event error:', error);
+                    alert('An error occurred while resetting the event.');
+                }
+            });
+
+            // Poll for malpractice updates
+            setInterval(() => {
+                if (document.getElementById('section-dashboard').classList.contains('active')) {
+                    loadMalpracticeFeed();
+                }
+            }, 5000);
+
+            // Initial load
+            loadMalpracticeFeed();
 
             // Load participants
             async function loadParticipants() {
