@@ -9,7 +9,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
-const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const AdmZip = require('adm-zip');
 const { supabase } = require('../config/database');
@@ -102,6 +101,7 @@ function parseExcel(filePath) {
  * Expected format: Question followed by options A, B, C, D and answer
  */
 async function parsePDF(filePath) {
+    const pdfParse = require('pdf-parse');
     const dataBuffer = fs.readFileSync(filePath);
     const pdfData = await pdfParse(dataBuffer);
     const text = pdfData.text;

@@ -7,6 +7,8 @@
     <meta name="description" content="Quiz Conquest - Admin Panel">
     <meta name="robots" content="noindex, nofollow">
     <title>Admin Panel | Quiz Conquest</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1013,7 +1015,17 @@
                     },
                     credentials: 'include'
                 });
-                if (!response.ok) { const text = await response.text(); throw new Error(text || response.statusText); } return response.json();
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    try {
+                        const json = JSON.parse(text);
+                        throw new Error(json.message || response.statusText);
+                    } catch (e) {
+                        throw new Error(text || response.statusText);
+                    }
+                }
+                return response.json();
             }
 
             // Show screen
@@ -1150,7 +1162,7 @@
                     }
                 } catch (error) {
                     console.error('Login error details:', error);
-                    loginError.textContent = 'Connection error: ' + (error.message || 'Check browser console');
+                    loginError.textContent = error.message;
                     loginError.style.display = 'block';
                 } finally {
                     loginBtn.disabled = false;

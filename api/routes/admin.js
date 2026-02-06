@@ -25,10 +25,11 @@ router.post('/login', async (req, res) => {
         }
 
         // Check against environment variables first (primary admin)
-        const envUsername = process.env.ADMIN_USERNAME;
-        const envPassword = process.env.ADMIN_PASSWORD;
+        // Check against environment variables first (primary admin)
+        const envUsername = (process.env.ADMIN_USERNAME || '').trim();
+        const envPassword = (process.env.ADMIN_PASSWORD || '').trim();
 
-        if (username === envUsername && password === envPassword) {
+        if (username.trim() === envUsername && password.trim() === envPassword) {
             // Check if admin exists in DB, if not create
             let adminId;
             const { data: existingAdmin } = await supabase

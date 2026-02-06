@@ -7,6 +7,8 @@
     <meta name="description" content="Quiz Conquest - ECE Professional Online Examination Platform">
     <meta name="robots" content="noindex, nofollow">
     <title>Quiz Conquest - ECE Online Exam Platform</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -352,9 +354,12 @@
 
             // Animation Loop
             let time = 0;
+            let frameCount = 0;
+
             function animate() {
                 requestAnimationFrame(animate);
                 time += 0.01;
+                frameCount++;
 
                 // Animate blobs
                 blobs.forEach(blob => {
@@ -382,11 +387,22 @@
                 camera.position.y = Math.cos(time * 0.1) * 2;
                 camera.lookAt(scene.position);
 
-                // Update reflections
-                mainSphere.visible = false; // Hide to not reflect itself improperly
-                cubeCamera.position.copy(mainSphere.position);
-                cubeCamera.update(renderer, scene);
-                mainSphere.visible = true;
+                // Update reflections - only every 10 frames to reduce load
+                // and avoid feedback loop by temporarily removing envMap from materials
+                if (frameCount % 10 === 0) {
+                    // Temporarily remove envMap from materials to avoid feedback loop
+                    material.envMap = null;
+                    mainSphere.visible = false;
+                    blobs.forEach(blob => { blob.mesh.visible = false; });
+
+                    cubeCamera.position.copy(mainSphere.position);
+                    cubeCamera.update(renderer, scene);
+
+                    // Restore visibility and envMap
+                    mainSphere.visible = true;
+                    blobs.forEach(blob => { blob.mesh.visible = true; });
+                    material.envMap = cubeRenderTarget.texture;
+                }
 
                 renderer.render(scene, camera);
             }

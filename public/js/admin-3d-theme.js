@@ -98,9 +98,12 @@
 
 
     let time = 0;
+    let frameCount = 0;
+
     function animate() {
         requestAnimationFrame(animate);
         time += 0.005;
+        frameCount++;
 
         // Animate nodes orbiting
         nodes.forEach(node => {
@@ -117,11 +120,22 @@
         hub.rotation.x = time * 0.05;
         hub.position.y = Math.sin(time) * 0.5;
 
-        // Update Environment Map (Reflections)
-        hub.visible = false;
-        cubeCamera.position.copy(hub.position);
-        cubeCamera.update(renderer, scene);
-        hub.visible = true;
+        // Update Environment Map (Reflections) - only every 10 frames to reduce load
+        // and avoid feedback loop by temporarily removing envMap from all materials
+        if (frameCount % 10 === 0) {
+            // Temporarily remove envMap from materials to avoid feedback loop
+            material.envMap = null;
+            hub.visible = false;
+            nodes.forEach(node => { node.mesh.visible = false; });
+
+            cubeCamera.position.copy(hub.position);
+            cubeCamera.update(renderer, scene);
+
+            // Restore visibility and envMap
+            hub.visible = true;
+            nodes.forEach(node => { node.mesh.visible = true; });
+            material.envMap = cubeRenderTarget.texture;
+        }
 
         renderer.render(scene, camera);
     }
