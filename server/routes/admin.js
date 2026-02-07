@@ -1,12 +1,13 @@
 /**
  * Admin Routes
  * Quiz Conquest - ECE Professional Online Exam Platform
+ * Optimized for 100+ concurrent participants
  */
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
-const { supabase } = require('../config/database');
+const { supabase, invalidateEventStateCache } = require('../config/database');
 const { requireAdmin, auditLog } = require('../middleware/auth');
 
 /**
@@ -253,6 +254,9 @@ router.post('/event/activate', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
+        // Invalidate cache so participants see the change immediately
+        invalidateEventStateCache();
+
         await auditLog(null, req.admin.id, 'EVENT_ACTIVATED', 'Event has been activated', null, req);
 
         res.json({
@@ -361,6 +365,9 @@ router.post('/round/start', requireAdmin, async (req, res) => {
 
         if (roundError) throw roundError;
 
+        // Invalidate cache so changes propagate immediately
+        invalidateEventStateCache();
+
         await auditLog(null, req.admin.id, 'ROUND_STARTED', `Round ${roundNumber} has been started`, roundNumber, req);
 
         res.json({
@@ -384,14 +391,14 @@ router.post('/round/start', requireAdmin, async (req, res) => {
 
 /**
  * POST /api/admin/round/end
- * End current round
+ * End current round (OPTIMIZED for 100+ participants)
  */
 router.post('/round/end', requireAdmin, async (req, res) => {
     try {
         // Get current event state
         const { data: eventState } = await supabase
             .from('event_state')
-            .select('*')
+            .select('current_round, round_status, round_started_at')
             .eq('id', 1)
             .single();
 
@@ -403,63 +410,47 @@ router.post('/round/end', requireAdmin, async (req, res) => {
         }
 
         const roundNumber = eventState.current_round;
-
-        // Auto-submit all pending exams
         const now = new Date();
-        const { data: pendingSessions } = await supabase
+        const nowISO = now.toISOString();
+
+        // Batch auto-submit ALL pending exams at once (much faster than loop)
+        const { data: updateResult, error: batchError } = await supabase
             .from('exam_sessions')
-            .select('id, participant_id, started_at')
+            .update({
+                is_submitted: true,
+                submitted_at: nowISO,
+                submission_type: 'auto_admin_end'
+            })
             .eq('round_number', roundNumber)
-            .eq('is_submitted', false);
+            .eq('is_submitted', false)
+            .select('id');
 
-        if (pendingSessions && pendingSessions.length > 0) {
-            for (const session of pendingSessions) {
-                const timeTaken = Math.floor((now - new Date(session.started_at)) / 1000);
-                await supabase
-                    .from('exam_sessions')
-                    .update({
-                        is_submitted: true,
-                        submitted_at: now.toISOString(),
-                        submission_type: 'auto_timer',
-                        time_taken_seconds: timeTaken
-                    })
-                    .eq('id', session.id);
+        if (batchError) throw batchError;
+        const autoSubmittedCount = updateResult?.length || 0;
 
-                await auditLog(
-                    session.participant_id,
-                    null,
-                    'AUTO_SUBMIT_ADMIN',
-                    'Exam auto-submitted by admin ending round',
-                    roundNumber,
-                    req
-                );
-            }
-        }
+        // Run state updates in parallel
+        await Promise.all([
+            // Update event state
+            supabase.from('event_state')
+                .update({ round_status: 'completed', updated_at: nowISO })
+                .eq('id', 1),
+            // Update round status
+            supabase.from('rounds')
+                .update({ status: 'completed', ended_at: nowISO })
+                .eq('round_number', roundNumber),
+            // Single audit log for batch operation
+            auditLog(null, req.admin.id, 'ROUND_ENDED',
+                `Round ${roundNumber} ended. Auto-submitted ${autoSubmittedCount} exams.`,
+                roundNumber, req, { autoSubmittedCount })
+        ]);
 
-        // Update event state
-        await supabase
-            .from('event_state')
-            .update({
-                round_status: 'completed',
-                updated_at: now.toISOString()
-            })
-            .eq('id', 1);
-
-        // Update round status
-        await supabase
-            .from('rounds')
-            .update({
-                status: 'completed',
-                ended_at: now.toISOString()
-            })
-            .eq('round_number', roundNumber);
-
-        await auditLog(null, req.admin.id, 'ROUND_ENDED', `Round ${roundNumber} has been ended`, roundNumber, req);
+        // Invalidate cache after state changes
+        invalidateEventStateCache();
 
         res.json({
             success: true,
             message: `Round ${roundNumber} ended successfully`,
-            autoSubmitted: pendingSessions?.length || 0
+            autoSubmitted: autoSubmittedCount
         });
     } catch (error) {
         console.error('Round end error:', error);

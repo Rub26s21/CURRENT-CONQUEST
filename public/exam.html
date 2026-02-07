@@ -701,46 +701,55 @@
                 });
             }
 
-            // Submit answer and go to next question
+            // Submit answer and go to next question (OPTIMISTIC UI)
             async function submitAnswer() {
                 if (state.isSubmitting) return;
                 state.isSubmitting = true;
-
                 elements.nextBtn.disabled = true;
 
-                try {
-                    const result = await api('/api/participant/answer', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            questionId: state.currentQuestion.questionId,
-                            selectedOption: state.selectedOption
-                        })
-                    });
+                const currentNum = parseInt(elements.currentQuestionNum.textContent);
+                const isLastQuestion = currentNum >= 15;
+                const savedQuestionId = state.currentQuestion.questionId;
+                const savedOption = state.selectedOption;
 
-                    if (!result.success) {
-                        console.error('Submit answer failed:', result.message);
+                // OPTIMISTIC: Update UI immediately before API call completes
+                elements.answeredCount.textContent = currentNum;
+
+                if (isLastQuestion) {
+                    // Last question - submit exam
+                    try {
+                        // Submit answer first
+                        await api('/api/participant/answer', {
+                            method: 'POST',
+                            body: JSON.stringify({ questionId: savedQuestionId, selectedOption: savedOption })
+                        });
+                        // Then submit exam
+                        await submitExam('manual');
+                    } catch (error) {
+                        console.error('Submit error:', error);
+                    } finally {
                         state.isSubmitting = false;
                         elements.nextBtn.disabled = false;
-                        return;
                     }
+                } else {
+                    // OPTIMISTIC: Start loading next question BEFORE API confirms
+                    const nextQuestionNum = currentNum + 1;
 
-                    // Update answered count
-                    const currentNum = parseInt(elements.currentQuestionNum.textContent);
-                    elements.answeredCount.textContent = currentNum;
+                    // Fire API call in background (non-blocking)
+                    api('/api/participant/answer', {
+                        method: 'POST',
+                        body: JSON.stringify({ questionId: savedQuestionId, selectedOption: savedOption })
+                    }).catch(err => console.error('Background answer submit error:', err));
 
-                    if (result.data.isLastQuestion) {
-                        // Submit exam
-                        await submitExam('manual');
-                    } else {
-                        // Load next question
-                        await loadQuestion(result.data.nextQuestion);
+                    // Immediately load next question (optimistic)
+                    try {
+                        await loadQuestion(nextQuestionNum);
+                    } catch (error) {
+                        console.error('Load question error:', error);
+                    } finally {
+                        state.isSubmitting = false;
+                        elements.nextBtn.disabled = false;
                     }
-
-                } catch (error) {
-                    console.error('Submit answer error:', error);
-                } finally {
-                    state.isSubmitting = false;
-                    elements.nextBtn.disabled = false;
                 }
             }
 

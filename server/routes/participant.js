@@ -1,12 +1,13 @@
 /**
  * Participant Routes
  * Quiz Conquest - ECE Professional Online Exam Platform
+ * Optimized for 100+ concurrent participants
  */
 
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
-const { supabase } = require('../config/database');
+const { supabase, getEventState } = require('../config/database');
 const { requireParticipant, auditLog } = require('../middleware/auth');
 
 /**
@@ -480,115 +481,83 @@ router.get('/question/:questionNumber', requireParticipant, async (req, res) => 
 
 /**
  * POST /api/participant/answer
- * Submit answer for a question and move to next
+ * Submit answer for a question and move to next (OPTIMIZED)
  */
 router.post('/answer', requireParticipant, async (req, res) => {
     try {
         const participant = req.participant;
         const { questionId, selectedOption } = req.body;
+        const now = new Date().toISOString();
 
-        // Get event state
-        const { data: eventState } = await supabase
-            .from('event_state')
-            .select('*')
-            .eq('id', 1)
-            .single();
+        // Run queries in parallel for speed
+        const [eventStateResult, examSessionResult, questionResult] = await Promise.all([
+            supabase.from('event_state').select('current_round, round_status').eq('id', 1).single(),
+            supabase.from('exam_sessions').select('id, current_question_number, is_submitted')
+                .eq('participant_id', participant.id).single(),
+            supabase.from('questions').select('id, question_number, correct_option, round_number')
+                .eq('id', questionId).single()
+        ]);
 
-        if (eventState.round_status !== 'running') {
-            return res.status(400).json({
-                success: false,
-                message: 'Round is not running'
-            });
+        const eventState = eventStateResult.data;
+        const examSession = examSessionResult.data;
+        const question = questionResult.data;
+
+        // Validate round is running
+        if (!eventState || eventState.round_status !== 'running') {
+            return res.status(400).json({ success: false, message: 'Round is not running' });
         }
 
-        const roundNumber = eventState.current_round;
-
-        // Verify exam session
-        const { data: examSession } = await supabase
-            .from('exam_sessions')
-            .select('*')
-            .eq('participant_id', participant.id)
-            .eq('round_number', roundNumber)
-            .single();
-
+        // Validate exam session
         if (!examSession || examSession.is_submitted) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid exam session'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid exam session' });
         }
 
-        // Get question to verify and check correct answer
-        const { data: question } = await supabase
-            .from('questions')
-            .select('*')
-            .eq('id', questionId)
-            .eq('round_number', roundNumber)
-            .single();
-
-        if (!question) {
-            return res.status(404).json({
-                success: false,
-                message: 'Question not found'
-            });
+        // Validate question
+        if (!question || question.round_number !== eventState.current_round) {
+            return res.status(404).json({ success: false, message: 'Question not found' });
         }
 
-        // Verify this is the current question
-        if (question.question_number !== examSession.current_question_number) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid question for current position'
-            });
-        }
-
-        // Validate selected option
+        // Validate option
         const validOptions = ['A', 'B', 'C', 'D'];
         const normalizedOption = selectedOption ? selectedOption.toUpperCase() : null;
-
         if (normalizedOption && !validOptions.includes(normalizedOption)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid option selected'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid option selected' });
         }
 
-        // Determine if correct
         const isCorrect = normalizedOption === question.correct_option;
-
-        // Upsert response (idempotent)
-        const { error: responseError } = await supabase
-            .from('responses')
-            .upsert({
-                participant_id: participant.id,
-                question_id: questionId,
-                round_number: roundNumber,
-                selected_option: normalizedOption,
-                is_correct: normalizedOption ? isCorrect : null,
-                answered_at: new Date().toISOString()
-            }, {
-                onConflict: 'participant_id,question_id'
-            });
-
-        if (responseError) throw responseError;
-
-        // Update exam session to next question
         const nextQuestion = examSession.current_question_number + 1;
         const isLastQuestion = examSession.current_question_number >= 15;
 
+        // Run updates in parallel for speed
+        const updatePromises = [
+            // Upsert response
+            supabase.from('responses').upsert({
+                participant_id: participant.id,
+                question_id: questionId,
+                round_number: eventState.current_round,
+                selected_option: normalizedOption,
+                is_correct: normalizedOption ? isCorrect : null,
+                answered_at: now
+            }, { onConflict: 'participant_id,question_id' })
+        ];
+
+        // Update exam session if not last question
         if (!isLastQuestion) {
-            await supabase
-                .from('exam_sessions')
-                .update({
-                    current_question_number: nextQuestion
-                })
-                .eq('id', examSession.id);
+            updatePromises.push(
+                supabase.from('exam_sessions')
+                    .update({ current_question_number: nextQuestion })
+                    .eq('id', examSession.id)
+            );
         }
 
-        // Update participant last activity
-        await supabase
-            .from('participants')
-            .update({ last_activity: new Date().toISOString() })
-            .eq('id', participant.id);
+        // Execute all updates in parallel
+        await Promise.all(updatePromises);
+
+        // Update participant activity in background (non-blocking)
+        supabase.from('participants')
+            .update({ last_activity: now })
+            .eq('id', participant.id)
+            .then(() => { });
 
         res.json({
             success: true,
@@ -601,12 +570,10 @@ router.post('/answer', requireParticipant, async (req, res) => {
         });
     } catch (error) {
         console.error('Submit answer error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to submit answer'
-        });
+        res.status(500).json({ success: false, message: 'Failed to submit answer' });
     }
 });
+
 
 /**
  * POST /api/participant/submit-exam
