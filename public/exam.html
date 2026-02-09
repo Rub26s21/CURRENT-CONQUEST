@@ -322,6 +322,7 @@
                 roundEndsAt: null,
                 examSession: null,
                 currentQuestion: null,
+                currentQuestionNum: 1,  // MNC STYLE: Track current question number
                 selectedOption: null,
                 isSubmitting: false,
                 timerInterval: null,
@@ -598,7 +599,7 @@
                 }
             }
 
-            // Start exam
+            // Start exam - MNC STYLE: Load ALL questions at once
             async function startExam() {
                 try {
                     const result = await api('/api/participant/start-exam', {
@@ -616,10 +617,15 @@
                     };
                     state.roundEndsAt = result.data.roundEndsAt;
                     state.tabSwitchCount = result.data.tabSwitchCount || 0;
+                    state.currentQuestionNum = 1;
 
                     elements.roundBadge.textContent = `Round ${result.data.roundNumber}`;
 
-                    await loadQuestion(result.data.currentQuestion);
+                    // MNC STYLE: Load ALL questions at once (single API call)
+                    await loadAllQuestions();
+
+                    // Display first question
+                    displayQuestion(1);
                     showScreen('exam');
                     startTimer();
 
@@ -628,69 +634,53 @@
                 }
             }
 
-            // Question cache for instant loading
-            const questionCache = {};
+            // All questions stored in memory (MNC style)
+            let allQuestions = [];
 
-            // Preload next questions in background
-            function preloadQuestions(startNum) {
-                for (let i = startNum; i <= Math.min(startNum + 2, 15); i++) {
-                    if (!questionCache[i]) {
-                        fetch(`/api/participant/question/${i}`)
-                            .then(r => r.json())
-                            .then(data => { if (data.success) questionCache[i] = data; })
-                            .catch(() => { });
+            // Load ALL questions at once (single API call)
+            async function loadAllQuestions() {
+                try {
+                    const result = await api('/api/participant/all-questions');
+                    if (result.success && result.data.questions) {
+                        allQuestions = result.data.questions;
                     }
+                } catch (error) {
+                    console.error('Load all questions error:', error);
                 }
             }
 
-            // Load question (with caching)
-            async function loadQuestion(questionNumber) {
-                try {
-                    let result;
+            // Display question (INSTANT - no network call)
+            function displayQuestion(questionNumber) {
+                const question = allQuestions.find(q => q.questionNumber === questionNumber);
+                if (!question) return;
 
-                    // Use cache if available
-                    if (questionCache[questionNumber]) {
-                        result = questionCache[questionNumber];
-                    } else {
-                        result = await api(`/api/participant/question/${questionNumber}`);
-                        if (result.success) questionCache[questionNumber] = result;
-                    }
+                state.currentQuestion = question;
+                state.currentQuestionNum = questionNumber;
 
-                    if (!result.success) {
-                        console.error('Load question failed:', result.message);
-                        return;
-                    }
+                // Restore previously selected answer if any
+                state.selectedOption = state.answers[question.questionId] || null;
 
-                    state.currentQuestion = result.data;
-                    state.selectedOption = result.data.selectedOption;
+                // Update UI instantly
+                elements.currentQuestionNum.textContent = questionNumber;
+                elements.questionLabel.textContent = `Question ${questionNumber}`;
+                elements.questionText.textContent = question.questionText;
+                elements.progressFill.style.width = `${((questionNumber - 1) / 15) * 100}%`;
+                elements.answeredCount.textContent = Object.keys(state.answers).length;
 
-                    // Update UI
-                    elements.currentQuestionNum.textContent = questionNumber;
-                    elements.questionLabel.textContent = `Question ${questionNumber}`;
-                    elements.questionText.textContent = result.data.questionText;
-                    elements.progressFill.style.width = `${((questionNumber - 1) / 15) * 100}%`;
-
-                    // Update answered count from server
-                    if (result.data.answeredCount !== undefined) {
-                        elements.answeredCount.textContent = result.data.answeredCount;
-                    }
-
-                    // Update button text
-                    if (questionNumber >= 15) {
-                        elements.nextBtnText.textContent = 'Submit Exam';
-                    } else {
-                        elements.nextBtnText.textContent = 'Next Question';
-                    }
-
-                    // Render options
-                    renderOptions(result.data.options, result.data.selectedOption);
-
-                    // Preload next questions in background
-                    preloadQuestions(questionNumber + 1);
-
-                } catch (error) {
-                    console.error('Load question error:', error);
+                // Update button text
+                if (questionNumber >= 15) {
+                    elements.nextBtnText.textContent = 'Submit Exam';
+                } else {
+                    elements.nextBtnText.textContent = 'Next Question';
                 }
+
+                // Render options
+                renderOptions(question.options, state.selectedOption);
+            }
+
+            // For backward compatibility
+            async function loadQuestion(questionNumber) {
+                displayQuestion(questionNumber);
             }
 
             // Render options
@@ -729,38 +719,29 @@
                 });
             }
 
-            // Submit answer and go to next question (BULK MODEL - NO API CALLS)
-            async function submitAnswer() {
+            // Submit answer and go to next question (INSTANT - MNC STYLE)
+            function submitAnswer() {
                 if (state.isSubmitting) return;
-                state.isSubmitting = true;
-                elements.nextBtn.disabled = true;
 
-                const currentNum = parseInt(elements.currentQuestionNum.textContent);
+                const currentNum = state.currentQuestionNum;
                 const isLastQuestion = currentNum >= 15;
-                const savedQuestionId = state.currentQuestion.questionId;
+                const savedQuestionId = state.currentQuestion?.questionId;
                 const savedOption = state.selectedOption;
 
-                // BULK MODEL: Store answer in memory ONLY (no API call)
+                // Store answer in memory (no API call)
                 if (savedQuestionId && savedOption) {
                     state.answers[savedQuestionId] = savedOption;
                 }
 
-                // Update UI instantly
-                elements.answeredCount.textContent = Object.keys(state.answers).length;
-
                 if (isLastQuestion) {
-                    // Last question - submit ALL answers in one request
-                    await submitExam('manual');
+                    // Last question - submit ALL answers
+                    state.isSubmitting = true;
+                    elements.nextBtn.disabled = true;
+                    submitExam('manual');
                 } else {
-                    // Instantly load next question (no network wait)
-                    loadQuestion(currentNum + 1).catch(err => console.error('Load error:', err));
+                    // INSTANT: Display next question (pure DOM, no network)
+                    displayQuestion(currentNum + 1);
                 }
-
-                // Re-enable button after 50ms (prevents double-click)
-                setTimeout(() => {
-                    state.isSubmitting = false;
-                    elements.nextBtn.disabled = false;
-                }, 50);
             }
 
             // Submit exam with ALL answers (BULK SUBMISSION)

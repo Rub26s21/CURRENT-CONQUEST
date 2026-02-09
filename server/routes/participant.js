@@ -480,6 +480,91 @@ router.get('/question/:questionNumber', requireParticipant, async (req, res) => 
 });
 
 /**
+ * GET /api/participant/all-questions
+ * MNC STYLE: Return ALL questions for the current round in a single call
+ * This enables instant client-side navigation with zero network latency
+ */
+router.get('/all-questions', requireParticipant, async (req, res) => {
+    try {
+        const participant = req.participant;
+
+        // Get event state
+        const { data: eventState } = await supabase
+            .from('event_state')
+            .select('current_round, round_status')
+            .eq('id', 1)
+            .single();
+
+        if (!eventState || eventState.round_status !== 'running') {
+            return res.status(400).json({
+                success: false,
+                message: 'Round is not running'
+            });
+        }
+
+        const roundNumber = eventState.current_round;
+
+        // Get exam session
+        const { data: examSession } = await supabase
+            .from('exam_sessions')
+            .select('id, is_submitted')
+            .eq('participant_id', participant.id)
+            .eq('round_number', roundNumber)
+            .single();
+
+        if (!examSession) {
+            return res.status(400).json({
+                success: false,
+                message: 'Exam session not found'
+            });
+        }
+
+        if (examSession.is_submitted) {
+            return res.status(400).json({
+                success: false,
+                message: 'Exam already submitted'
+            });
+        }
+
+        // Get ALL questions for this round (without correct answers)
+        const { data: questions, error } = await supabase
+            .from('questions')
+            .select('id, question_number, question_text, option_a, option_b, option_c, option_d')
+            .eq('round_number', roundNumber)
+            .order('question_number', { ascending: true });
+
+        if (error) throw error;
+
+        // Format questions for frontend
+        const formattedQuestions = questions.map(q => ({
+            questionId: q.id,
+            questionNumber: q.question_number,
+            questionText: q.question_text,
+            options: {
+                A: q.option_a,
+                B: q.option_b,
+                C: q.option_c,
+                D: q.option_d
+            }
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                questions: formattedQuestions,
+                totalQuestions: formattedQuestions.length
+            }
+        });
+    } catch (error) {
+        console.error('Get all questions error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch questions'
+        });
+    }
+});
+
+/**
  * POST /api/participant/answer
  * DEPRECATED: Individual answer submission (kept for backward compatibility)
  * With bulk submission model, answers are stored client-side and sent all at once
