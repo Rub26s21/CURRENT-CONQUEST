@@ -129,38 +129,57 @@
             display: block;
         }
 
-        /* 3D Background Logo */
+        /* Shared 3D Logo Styles */
         .background-logo {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) perspective(1000px) rotateY(-5deg) rotateX(5deg);
+            opacity: 0.12;
+            z-index: 0;
+            pointer-events: none;
+            width: 50vw;
+            max-width: 500px;
+        }
+
+        /* VSBEC Logo Position (Top Left) */
+        .background-logo:not(.logo-cc) {
+            top: 25%;
+            left: 25%;
+            transform: translate(-50%, -50%) perspective(1000px) rotateY(-10deg) rotateX(5deg);
+            animation: floatVsbec 10s ease-in-out infinite;
+        }
+
+        /* Current Conquest Logo Position (Bottom Right) */
+        .logo-cc {
+            top: 75%;
+            left: 75%;
+            transform: translate(-50%, -50%) perspective(1000px) rotateY(10deg) rotateX(-5deg);
+            animation: floatCc 12s ease-in-out infinite;
             width: 60vw;
             max-width: 600px;
             opacity: 0.15;
-            z-index: 0;
-            pointer-events: none;
-            animation: float3d 8s ease-in-out infinite;
-            filter: drop-shadow(0 0 60px rgba(255, 107, 53, 0.4));
+            filter: drop-shadow(0 0 40px rgba(255, 140, 0, 0.3));
         }
 
-        @keyframes float3d {
+        @keyframes floatVsbec {
 
             0%,
             100% {
-                transform: translate(-50%, -50%) perspective(1000px) rotateY(-5deg) rotateX(5deg) translateZ(0);
-            }
-
-            25% {
-                transform: translate(-50%, -50%) perspective(1000px) rotateY(3deg) rotateX(-3deg) translateZ(20px);
+                transform: translate(-50%, -50%) perspective(1000px) rotateY(-10deg) rotateX(5deg) translateZ(0);
             }
 
             50% {
-                transform: translate(-50%, -50%) perspective(1000px) rotateY(5deg) rotateX(5deg) translateZ(40px);
+                transform: translate(-50%, -50%) perspective(1000px) rotateY(5deg) rotateX(-5deg) translateZ(30px);
+            }
+        }
+
+        @keyframes floatCc {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) perspective(1000px) rotateY(10deg) rotateX(-5deg) translateZ(0);
             }
 
-            75% {
-                transform: translate(-50%, -50%) perspective(1000px) rotateY(-3deg) rotateX(-5deg) translateZ(20px);
+            50% {
+                transform: translate(-50%, -50%) perspective(1000px) rotateY(-5deg) rotateX(5deg) translateZ(40px);
             }
         }
     </style>
