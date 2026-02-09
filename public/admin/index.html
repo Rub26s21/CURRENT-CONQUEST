@@ -548,10 +548,6 @@
                     <span class="nav-icon">🏆</span>
                     <span>Results</span>
                 </div>
-                <div class="nav-item" data-section="audit">
-                    <span class="nav-icon">📋</span>
-                    <span>Audit Logs</span>
-                </div>
                 <div class="nav-item" data-section="file-upload">
                     <span class="nav-icon">📁</span>
                     <span>File Upload</span>
@@ -716,19 +712,6 @@
                     <div class="round-cards" id="roundCards">
                         <!-- Round cards will be injected here -->
                     </div>
-                </div>
-
-                <!-- Malpractice Feed -->
-                <div class="card" style="margin-top: var(--space-xl);">
-                    <div class="card-header"
-                        style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-lg); border-bottom: 1px solid var(--border-color);">
-                        <h3 style="margin: 0;">⚠️ Live Malpractice Feed</h3>
-                        <span class="badge badge-danger" style="animation: pulse 2s infinite;">Live</span>
-                    </div>
-                    <div class="audit-log-container" id="malpracticeFeed" style="max-height: 300px; overflow-y: auto;">
-                        <div class="text-center text-muted" style="padding: var(--space-lg);">No recent violations</div>
-                    </div>
-                </div>
             </section>
 
 
@@ -863,17 +846,19 @@
             <!-- Results Section -->
             <section class="section hidden" id="section-results">
                 <div class="admin-header">
-                    <h1 class="admin-title">Results</h1>
+                    <h1 class="admin-title">🏆 Results</h1>
                 </div>
 
                 <!-- Round Selector -->
                 <div class="tab-nav" id="resultsRoundTabs">
-                    <button class="tab-btn active" data-round="1">Round 1</button>
+                    <button class="tab-btn" data-round="1">Round 1</button>
                     <button class="tab-btn" data-round="2">Round 2</button>
                     <button class="tab-btn" data-round="3">Round 3</button>
+                    <button class="tab-btn active" data-round="combined">📊 Combined Results</button>
                 </div>
 
-                <div class="results-container">
+                <!-- Individual Round Results -->
+                <div class="results-container" id="roundResultsContainer">
                     <div class="results-header">
                         <h3>Round <span id="resultsRoundNumber">1</span> Results</h3>
                         <button class="btn btn-primary" id="exportResultsBtn">📥 Export CSV</button>
@@ -897,19 +882,33 @@
                         </tbody>
                     </table>
                 </div>
-            </section>
 
-            <!-- Audit Logs Section -->
-            <section class="section hidden" id="section-audit">
-                <div class="admin-header">
-                    <h1 class="admin-title">Audit Logs</h1>
-                    <button class="btn btn-secondary" id="refreshAuditLogs">🔄 Refresh</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-body" id="auditLogsContainer" style="max-height: 600px; overflow-y: auto;">
-                        <div class="text-center text-muted">Loading audit logs...</div>
+                <!-- Combined Results (All 3 Rounds) -->
+                <div class="results-container" id="combinedResultsContainer" style="display: block;">
+                    <div class="results-header">
+                        <h3>🏆 Combined Results (All 3 Rounds)</h3>
+                        <button class="btn btn-primary" id="exportCombinedResultsBtn">📥 Export Combined CSV</button>
                     </div>
+                    <table class="table" id="combinedResultsTable">
+                        <thead>
+                            <tr>
+                                <th>Final Rank</th>
+                                <th>System ID</th>
+                                <th>Name</th>
+                                <th>College</th>
+                                <th>Round 1</th>
+                                <th>Round 2</th>
+                                <th>Round 3</th>
+                                <th>Total Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="combinedResultsTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">Loading combined results...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
@@ -1187,10 +1186,8 @@
                         loadParticipants();
                         break;
                     case 'results':
-                        loadResults(state.selectedResultsRound);
-                        break;
-                    case 'audit':
-                        loadAuditLogs();
+                        // Load combined results by default (it's the active tab)
+                        loadCombinedResults();
                         break;
                 }
             }
@@ -1818,30 +1815,6 @@
                 }
             }
 
-            // Load Malpractice Feed
-            async function loadMalpracticeFeed() {
-                try {
-                    const result = await api('/api/admin/malpractice-logs');
-                    const feed = document.getElementById('malpracticeFeed');
-
-                    if (result.success && result.data.length > 0) {
-                        feed.innerHTML = result.data.map(log => `
-                            <div class="audit-log-item" style="border-left: 3px solid var(--danger);">
-                                <div class="audit-log-time">${new Date(log.created_at).toLocaleTimeString()}</div>
-                                <div class="audit-log-content">
-                                    <div><strong>${log.participants?.name || 'Unknown'}</strong> (${log.participants?.system_id || '?'})</div>
-                                    <div style="color: var(--danger);">${log.details}</div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted);">${log.participants?.college_name || '-'}</div>
-                                </div>
-                            </div>
-                        `).join('');
-                    } else {
-                        feed.innerHTML = '<div class="text-center text-muted" style="padding: var(--space-lg);">No recent violations</div>';
-                    }
-                } catch (error) {
-                    console.error('Load malpractice feed error:', error);
-                }
-            }
 
             // Initialize Reset Event Button
             document.getElementById('resetEventBtn').addEventListener('click', async () => {
@@ -2016,42 +1989,135 @@
                 window.location.href = `/api/admin/export/${roundNumber}`;
             }
 
-            // Load audit logs
-            async function loadAuditLogs() {
+            // Load Combined Results (All 3 Rounds)
+            async function loadCombinedResults() {
+                const tbody = document.getElementById('combinedResultsTableBody');
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading combined results...</td></tr>';
+
                 try {
-                    const result = await api('/api/admin/audit-logs');
+                    // Fetch results from all 3 rounds in parallel
+                    const [r1, r2, r3] = await Promise.all([
+                        api('/api/admin/results/1'),
+                        api('/api/admin/results/2'),
+                        api('/api/admin/results/3')
+                    ]);
 
-                    if (result.success) {
-                        renderAuditLogs(result.data);
+                    // Combine results by participant
+                    const participantScores = {};
+
+                    [r1, r2, r3].forEach((result, index) => {
+                        const roundNum = index + 1;
+                        if (result.success && result.data.results) {
+                            result.data.results.forEach(r => {
+                                const pid = r.participant_id;
+                                if (!participantScores[pid]) {
+                                    participantScores[pid] = {
+                                        participant_id: pid,
+                                        system_id: r.participants?.system_id || '-',
+                                        name: r.participants?.name || '-',
+                                        college: r.participants?.college_name || '-',
+                                        round1: null,
+                                        round2: null,
+                                        round3: null,
+                                        total: 0
+                                    };
+                                }
+                                participantScores[pid][`round${roundNum}`] = r.correct_answers;
+                                participantScores[pid].total += (r.correct_answers || 0);
+                            });
+                        }
+                    });
+
+                    // Convert to array and sort by total score
+                    const sortedResults = Object.values(participantScores)
+                        .sort((a, b) => b.total - a.total);
+
+                    if (sortedResults.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No results available yet</td></tr>';
+                        return;
                     }
+
+                    // Render combined results
+                    tbody.innerHTML = sortedResults.map((p, index) => `
+                        <tr>
+                            <td><strong>#${index + 1}</strong></td>
+                            <td><code>${p.system_id}</code></td>
+                            <td>${p.name}</td>
+                            <td>${p.college}</td>
+                            <td>${p.round1 !== null ? p.round1 + '/15' : '-'}</td>
+                            <td>${p.round2 !== null ? p.round2 + '/15' : '-'}</td>
+                            <td>${p.round3 !== null ? p.round3 + '/15' : '-'}</td>
+                            <td><strong style="color: var(--primary-light);">${p.total}/45</strong></td>
+                            <td>
+                                ${index < 3 ? '<span class="badge badge-success">🏆 Top 3</span>' :
+                            index < 10 ? '<span class="badge badge-primary">Top 10</span>' :
+                                '<span class="badge badge-neutral">Participant</span>'}
+                            </td>
+                        </tr>
+                    `).join('');
                 } catch (error) {
-                    console.error('Load audit logs error:', error);
+                    console.error('Load combined results error:', error);
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Error loading combined results</td></tr>';
                 }
             }
 
-            // Render audit logs
-            function renderAuditLogs(logs) {
-                const container = document.getElementById('auditLogsContainer');
+            // Export Combined Results
+            document.getElementById('exportCombinedResultsBtn')?.addEventListener('click', async () => {
+                try {
+                    // Fetch all results
+                    const [r1, r2, r3] = await Promise.all([
+                        api('/api/admin/results/1'),
+                        api('/api/admin/results/2'),
+                        api('/api/admin/results/3')
+                    ]);
 
-                if (!logs || logs.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center text-muted">No audit logs available</div>
-                    `;
-                    return;
+                    const participantScores = {};
+                    [r1, r2, r3].forEach((result, index) => {
+                        const roundNum = index + 1;
+                        if (result.success && result.data.results) {
+                            result.data.results.forEach(r => {
+                                const pid = r.participant_id;
+                                if (!participantScores[pid]) {
+                                    participantScores[pid] = {
+                                        system_id: r.participants?.system_id || '',
+                                        name: r.participants?.name || '',
+                                        college: r.participants?.college_name || '',
+                                        round1: '',
+                                        round2: '',
+                                        round3: '',
+                                        total: 0
+                                    };
+                                }
+                                participantScores[pid][`round${roundNum}`] = r.correct_answers;
+                                participantScores[pid].total += (r.correct_answers || 0);
+                            });
+                        }
+                    });
+
+                    const sorted = Object.values(participantScores).sort((a, b) => b.total - a.total);
+
+                    // Generate CSV
+                    const csv = [
+                        ['Rank', 'System ID', 'Name', 'College', 'Round 1', 'Round 2', 'Round 3', 'Total Score'].join(','),
+                        ...sorted.map((p, i) => [
+                            i + 1, p.system_id, `"${p.name}"`, `"${p.college}"`,
+                            p.round1 || 0, p.round2 || 0, p.round3 || 0, p.total
+                        ].join(','))
+                    ].join('\n');
+
+                    // Download
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'combined_results.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Export combined results error:', error);
+                    alert('Failed to export combined results');
                 }
-
-                container.innerHTML = logs.map(log => `
-                    <div class="audit-log-item">
-                        <div class="audit-log-time">${new Date(log.created_at).toLocaleString()}</div>
-                        <div class="audit-log-content">
-                            <span class="audit-log-type">${log.event_type}</span>
-                            ${log.participants ? `<strong>${log.participants.name}</strong> (${log.participants.system_id}): ` : ''}
-                            ${log.event_description}
-                            ${log.round_number ? ` <span class="badge badge-neutral">Round ${log.round_number}</span>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-            }
+            });
 
             // Reset event
             async function resetEvent() {
@@ -2094,20 +2160,16 @@
             function startAutoRefresh() {
                 if (state.refreshInterval) return;
 
-                // Initial load of dashboard and malpractice feed
+                // Initial load of dashboard
                 loadDashboard();
-                loadMalpracticeFeed();
 
                 state.refreshInterval = setInterval(() => {
                     if (state.currentSection === 'dashboard') {
                         loadDashboard();
-                        loadMalpracticeFeed();
                     } else if (state.currentSection === 'participants') {
                         loadParticipants();
                     } else if (state.currentSection === 'results') {
                         loadResults(state.selectedResultsRound);
-                    } else if (state.currentSection === 'audit') {
-                        loadAuditLogs();
                     }
                 }, 5000);
             }
@@ -2135,7 +2197,6 @@
             addSafeEventListener('bulkImportBtn', 'click', bulkImport);
             addSafeEventListener('refreshParticipants', 'click', loadParticipants);
             addSafeEventListener('exportResultsBtn', 'click', exportResults);
-            addSafeEventListener('refreshAuditLogs', 'click', loadAuditLogs);
             addSafeEventListener('resetEventBtn', 'click', resetEvent);
 
             // Navigation
@@ -2161,8 +2222,23 @@
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('#resultsRoundTabs .tab-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    state.selectedResultsRound = parseInt(btn.dataset.round);
-                    loadResults(state.selectedResultsRound);
+
+                    const roundValue = btn.dataset.round;
+                    const roundContainer = document.getElementById('roundResultsContainer');
+                    const combinedContainer = document.getElementById('combinedResultsContainer');
+
+                    if (roundValue === 'combined') {
+                        // Show combined results, hide individual round
+                        roundContainer.style.display = 'none';
+                        combinedContainer.style.display = 'block';
+                        loadCombinedResults();
+                    } else {
+                        // Show individual round, hide combined
+                        roundContainer.style.display = 'block';
+                        combinedContainer.style.display = 'none';
+                        state.selectedResultsRound = parseInt(roundValue);
+                        loadResults(state.selectedResultsRound);
+                    }
                 });
             });
 
