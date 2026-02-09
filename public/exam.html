@@ -297,6 +297,47 @@
         </svg>
     </div>
 
+    <!-- 3D Background Logo - CURRENT CONQUEST -->
+    <div class="background-logo logo-cc">
+        <svg viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="textGradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ff9900;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#ff5500;stop-opacity:1" />
+                </linearGradient>
+                <filter id="ccGlow2">
+                    <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                    <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <!-- Mountain Icon -->
+            <path d="M250 40 L290 90 L210 90 Z" fill="#fff" opacity="0.9" transform="translate(0, -10)" />
+            <path d="M250 40 L270 90 L230 90 Z" fill="#eee" opacity="0.5" transform="translate(0, -10)" />
+
+            <!-- CURRENT Text -->
+            <text x="250" y="140" font-family="Arial Black, Impact, sans-serif" font-size="70" font-weight="900"
+                font-style="italic" fill="#fff" text-anchor="middle" letter-spacing="2"
+                transform="rotate(-5, 250, 150)">CURRENT</text>
+
+            <!-- CONQUEST Text -->
+            <text x="250" y="210" font-family="Arial Black, Impact, sans-serif" font-size="85" font-weight="900"
+                font-style="italic" fill="url(#textGradient2)" text-anchor="middle" letter-spacing="1"
+                filter="url(#ccGlow2)" transform="rotate(-5, 250, 150)">CONQUEST</text>
+
+            <!-- Lightning Bolt -->
+            <path d="M280 180 L240 240 L270 240 L230 300 L260 250 L230 250 L270 180 Z" fill="#ffcc00" stroke="#fff"
+                stroke-width="2" transform="rotate(-15, 250, 240) translate(20, -20)" />
+
+            <!-- Decor lines -->
+            <path d="M50 160 L450 100" stroke="#ff9900" stroke-width="3" stroke-opacity="0.6" stroke-linecap="round" />
+            <path d="M50 240 L450 180" stroke="#ff9900" stroke-width="3" stroke-opacity="0.6" stroke-linecap="round" />
+        </svg>
+    </div>
+
     <!-- 3D Canvas Container -->
     <div id="canvas-container"></div>
     <!-- Loading Screen -->
