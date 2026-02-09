@@ -928,7 +928,7 @@
 
                 if (isLastQuestion) {
                     // Last question - submit ALL answers
-                    state.isSubmitting = true;
+                    // Don't set isSubmitting here, let submitExam handle it to avoid early return check
                     elements.nextBtn.disabled = true;
                     submitExam('manual');
                 } else {
