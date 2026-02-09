@@ -451,6 +451,10 @@
                 // Auto-submit when time expires
                 if (remaining <= 0 && !state.isSubmitting) {
                     clearInterval(state.timerInterval);
+                    // CRITICAL: Save current answer before auto-submit
+                    if (state.currentQuestion?.questionId && state.selectedOption) {
+                        state.answers[state.currentQuestion.questionId] = state.selectedOption;
+                    }
                     submitExam('auto_timer');
                 }
             }
@@ -643,16 +647,40 @@
                     const result = await api('/api/participant/all-questions');
                     if (result.success && result.data.questions) {
                         allQuestions = result.data.questions;
+                    } else {
+                        console.error('Failed to load questions:', result.message);
+                        // Retry once after 1 second
+                        await new Promise(r => setTimeout(r, 1000));
+                        const retry = await api('/api/participant/all-questions');
+                        if (retry.success && retry.data.questions) {
+                            allQuestions = retry.data.questions;
+                        }
                     }
                 } catch (error) {
                     console.error('Load all questions error:', error);
+                    // Retry once
+                    try {
+                        await new Promise(r => setTimeout(r, 1000));
+                        const retry = await api('/api/participant/all-questions');
+                        if (retry.success && retry.data.questions) {
+                            allQuestions = retry.data.questions;
+                        }
+                    } catch (e) {
+                        console.error('Retry also failed:', e);
+                    }
                 }
             }
 
             // Display question (INSTANT - no network call)
             function displayQuestion(questionNumber) {
                 const question = allQuestions.find(q => q.questionNumber === questionNumber);
-                if (!question) return;
+                if (!question) {
+                    // Show error if questions not loaded
+                    if (allQuestions.length === 0) {
+                        elements.questionText.textContent = 'Failed to load questions. Please refresh the page.';
+                    }
+                    return;
+                }
 
                 state.currentQuestion = question;
                 state.currentQuestionNum = questionNumber;
@@ -745,6 +773,9 @@
             }
 
             // Submit exam with ALL answers (BULK SUBMISSION)
+            let submitRetryCount = 0;
+            const MAX_SUBMIT_RETRIES = 3;
+
             async function submitExam(submissionType = 'manual') {
                 if (state.isSubmitting && submissionType === 'manual') return;
                 state.isSubmitting = true;
@@ -767,6 +798,7 @@
                     });
 
                     if (result.success) {
+                        submitRetryCount = 0; // Reset on success
                         clearInterval(state.timerInterval);
                         showScreen('completion');
 
@@ -782,12 +814,23 @@
                         }
 
                         elements.submissionTime.textContent = new Date().toLocaleTimeString();
+                    } else {
+                        throw new Error(result.message || 'Submission failed');
                     }
 
                 } catch (error) {
                     console.error('Submit exam error:', error);
-                    // On error, try again after 1 second
-                    setTimeout(() => submitExam(submissionType), 1000);
+                    submitRetryCount++;
+
+                    if (submitRetryCount < MAX_SUBMIT_RETRIES) {
+                        // Retry with exponential backoff
+                        setTimeout(() => submitExam(submissionType), 1000 * submitRetryCount);
+                    } else {
+                        // Max retries exceeded - show error
+                        elements.completionMessage.textContent =
+                            'Failed to submit exam. Please check your internet connection and refresh the page.';
+                        showScreen('completion');
+                    }
                 } finally {
                     state.isSubmitting = false;
                 }

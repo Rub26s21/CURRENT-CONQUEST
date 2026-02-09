@@ -603,8 +603,16 @@ router.post('/submit-exam', requireParticipant, async (req, res) => {
         const examSession = examSessionResult.data;
         const roundNumber = eventState?.current_round || 1;
 
+        // Check if exam session exists
+        if (!examSession) {
+            return res.status(400).json({
+                success: false,
+                message: 'No exam session found'
+            });
+        }
+
         // IDEMPOTENT: If already submitted, return success immediately
-        if (examSession?.is_submitted) {
+        if (examSession.is_submitted) {
             return res.json({
                 success: true,
                 message: 'Exam already submitted',
@@ -750,7 +758,7 @@ router.post('/tab-switch', requireParticipant, async (req, res) => {
             .eq('id', 1)
             .single();
 
-        if (eventState.round_status !== 'running') {
+        if (!eventState || eventState.round_status !== 'running') {
             return res.json({
                 success: true,
                 message: 'Round not running, violation ignored'
