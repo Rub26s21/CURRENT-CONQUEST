@@ -327,7 +327,9 @@
                 timerInterval: null,
                 statusInterval: null,
                 tabSwitchCount: 0,
-                serverTimeOffset: 0
+                serverTimeOffset: 0,
+                // BULK SUBMISSION: Store all answers in memory (no per-question DB calls)
+                answers: {}  // { questionId: selectedOption }
             };
 
             // DOM Elements
@@ -727,7 +729,7 @@
                 });
             }
 
-            // Submit answer and go to next question (ULTRA-FAST)
+            // Submit answer and go to next question (BULK MODEL - NO API CALLS)
             async function submitAnswer() {
                 if (state.isSubmitting) return;
                 state.isSubmitting = true;
@@ -738,49 +740,49 @@
                 const savedQuestionId = state.currentQuestion.questionId;
                 const savedOption = state.selectedOption;
 
-                // UPDATE UI INSTANTLY (no waiting)
-                elements.answeredCount.textContent = currentNum;
+                // BULK MODEL: Store answer in memory ONLY (no API call)
+                if (savedQuestionId && savedOption) {
+                    state.answers[savedQuestionId] = savedOption;
+                }
 
-                // Fire answer to server in background (NON-BLOCKING)
-                // Server responds immediately, saves to DB in background
-                fetch('/api/participant/answer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        questionId: savedQuestionId,
-                        selectedOption: savedOption,
-                        currentQuestionNumber: currentNum
-                    })
-                }).catch(err => console.error('Answer save error:', err));
+                // Update UI instantly
+                elements.answeredCount.textContent = Object.keys(state.answers).length;
 
                 if (isLastQuestion) {
-                    // Last question - submit exam
-                    try {
-                        await submitExam('manual');
-                    } catch (error) {
-                        console.error('Submit error:', error);
-                    }
+                    // Last question - submit ALL answers in one request
+                    await submitExam('manual');
                 } else {
-                    // INSTANTLY load next question (don't wait for answer API)
+                    // Instantly load next question (no network wait)
                     loadQuestion(currentNum + 1).catch(err => console.error('Load error:', err));
                 }
 
-                // Re-enable button after 100ms (prevents double-click)
+                // Re-enable button after 50ms (prevents double-click)
                 setTimeout(() => {
                     state.isSubmitting = false;
                     elements.nextBtn.disabled = false;
-                }, 100);
+                }, 50);
             }
 
-            // Submit exam
+            // Submit exam with ALL answers (BULK SUBMISSION)
             async function submitExam(submissionType = 'manual') {
-                if (state.isSubmitting) return;
+                if (state.isSubmitting && submissionType === 'manual') return;
                 state.isSubmitting = true;
+                elements.nextBtn.disabled = true;
 
                 try {
+                    // Convert answers object to array format for bulk insert
+                    const answersArray = Object.entries(state.answers).map(([questionId, selectedOption]) => ({
+                        question_id: questionId,
+                        selected_option: selectedOption
+                    }));
+
+                    // SINGLE API CALL with ALL answers
                     const result = await api('/api/participant/submit-exam', {
                         method: 'POST',
-                        body: JSON.stringify({ submissionType })
+                        body: JSON.stringify({
+                            submissionType,
+                            answers: answersArray  // All answers in one request
+                        })
                     });
 
                     if (result.success) {
@@ -803,6 +805,8 @@
 
                 } catch (error) {
                     console.error('Submit exam error:', error);
+                    // On error, try again after 1 second
+                    setTimeout(() => submitExam(submissionType), 1000);
                 } finally {
                     state.isSubmitting = false;
                 }
@@ -811,11 +815,24 @@
             // Handle tab switch/visibility change
             async function handleVisibilityChange() {
                 if (document.hidden && screens.exam.classList.contains('active')) {
-                    // Tab switch during exam
+                    // Save current answer to state before reporting
+                    if (state.currentQuestion?.questionId && state.selectedOption) {
+                        state.answers[state.currentQuestion.questionId] = state.selectedOption;
+                    }
+
+                    // Tab switch during exam - send answers in case of auto-submit
                     try {
+                        const answersArray = Object.entries(state.answers).map(([questionId, selectedOption]) => ({
+                            question_id: questionId,
+                            selected_option: selectedOption
+                        }));
+
                         const result = await api('/api/participant/tab-switch', {
                             method: 'POST',
-                            body: JSON.stringify({ violationType: 'visibility_change' })
+                            body: JSON.stringify({
+                                violationType: 'visibility_change',
+                                answers: answersArray  // Send answers for potential auto-submit
+                            })
                         });
 
                         if (result.success) {

@@ -481,110 +481,45 @@ router.get('/question/:questionNumber', requireParticipant, async (req, res) => 
 
 /**
  * POST /api/participant/answer
- * Submit answer for a question and move to next
- * ULTRA-FAST: Responds immediately, DB writes happen in background
+ * DEPRECATED: Individual answer submission (kept for backward compatibility)
+ * With bulk submission model, answers are stored client-side and sent all at once
+ * This endpoint now just returns success immediately
  */
-router.post('/answer', requireParticipant, async (req, res) => {
-    const participant = req.participant;
-    const { questionId, selectedOption } = req.body;
-    const now = new Date().toISOString();
-
-    // Get cached exam session from request (set by middleware) or memory
-    const currentQuestion = parseInt(req.body.currentQuestionNumber) || 1;
-    const isLastQuestion = currentQuestion >= 15;
-    const nextQuestion = currentQuestion + 1;
-
-    // RESPOND IMMEDIATELY - Don't wait for any database operations
+router.post('/answer', requireParticipant, (req, res) => {
+    // With bulk submission, individual answers are stored client-side
+    // This endpoint is kept for backward compatibility only
     res.json({
         success: true,
-        message: 'Answer submitted',
-        data: {
-            nextQuestion: isLastQuestion ? null : nextQuestion,
-            isLastQuestion,
-            currentQuestion: isLastQuestion ? 15 : nextQuestion
-        }
-    });
-
-    // ALL DATABASE OPERATIONS HAPPEN IN BACKGROUND (fire-and-forget)
-    // This makes the API respond in <10ms instead of 200-500ms
-    setImmediate(async () => {
-        try {
-            const normalizedOption = selectedOption ? selectedOption.toUpperCase() : null;
-
-            // Get question to check correct answer (for scoring)
-            const { data: question } = await supabase
-                .from('questions')
-                .select('correct_option, round_number')
-                .eq('id', questionId)
-                .single();
-
-            const isCorrect = question && normalizedOption === question.correct_option;
-            const roundNumber = question?.round_number || 1;
-
-            // Fire all updates in parallel (non-blocking)
-            Promise.all([
-                // Save response
-                supabase.from('responses').upsert({
-                    participant_id: participant.id,
-                    question_id: questionId,
-                    round_number: roundNumber,
-                    selected_option: normalizedOption,
-                    is_correct: normalizedOption ? isCorrect : null,
-                    answered_at: now
-                }, { onConflict: 'participant_id,question_id' }),
-
-                // Update exam session question number
-                supabase.from('exam_sessions')
-                    .update({ current_question_number: isLastQuestion ? 15 : nextQuestion })
-                    .eq('participant_id', participant.id),
-
-                // Update last activity
-                supabase.from('participants')
-                    .update({ last_activity: now })
-                    .eq('id', participant.id)
-            ]).catch(err => console.error('Background answer save error:', err));
-        } catch (error) {
-            console.error('Background answer processing error:', error);
-        }
+        message: 'Answer received (bulk submission in use)'
     });
 });
 
 
+
 /**
  * POST /api/participant/submit-exam
- * Final exam submission
+ * BULK SUBMISSION: Receive ALL answers at once, insert in single query
+ * Responds immediately, score calculation happens in background
  */
 router.post('/submit-exam', requireParticipant, async (req, res) => {
+    const participant = req.participant;
+    const { submissionType = 'manual', answers = [] } = req.body;
+    const now = new Date();
+    const nowISO = now.toISOString();
+
     try {
-        const participant = req.participant;
-        const { submissionType = 'manual' } = req.body;
+        // Get event state and exam session in parallel
+        const [eventStateResult, examSessionResult] = await Promise.all([
+            supabase.from('event_state').select('current_round, round_status, round_end_time').eq('id', 1).single(),
+            supabase.from('exam_sessions').select('*').eq('participant_id', participant.id).order('created_at', { ascending: false }).limit(1).single()
+        ]);
 
-        // Get event state
-        const { data: eventState } = await supabase
-            .from('event_state')
-            .select('*')
-            .eq('id', 1)
-            .single();
+        const eventState = eventStateResult.data;
+        const examSession = examSessionResult.data;
+        const roundNumber = eventState?.current_round || 1;
 
-        const roundNumber = eventState.current_round;
-
-        // Get exam session
-        const { data: examSession } = await supabase
-            .from('exam_sessions')
-            .select('*')
-            .eq('participant_id', participant.id)
-            .eq('round_number', roundNumber)
-            .single();
-
-        if (!examSession) {
-            return res.status(400).json({
-                success: false,
-                message: 'No exam session found'
-            });
-        }
-
-        // Check if already submitted (idempotent)
-        if (examSession.is_submitted) {
+        // IDEMPOTENT: If already submitted, return success immediately
+        if (examSession?.is_submitted) {
             return res.json({
                 success: true,
                 message: 'Exam already submitted',
@@ -592,42 +527,117 @@ router.post('/submit-exam', requireParticipant, async (req, res) => {
             });
         }
 
+        // Grace window: Accept submissions up to 5 seconds after round end
+        const roundEndTime = eventState?.round_end_time ? new Date(eventState.round_end_time) : null;
+        const graceMs = 5000; // 5 second grace window
+        if (roundEndTime && now > new Date(roundEndTime.getTime() + graceMs) && submissionType !== 'auto_timer') {
+            return res.status(400).json({
+                success: false,
+                message: 'Round has ended'
+            });
+        }
+
         // Calculate time taken
-        const startTime = new Date(examSession.started_at);
-        const now = new Date();
+        const startTime = examSession?.started_at ? new Date(examSession.started_at) : now;
         const timeTakenSeconds = Math.floor((now - startTime) / 1000);
 
-        // Update exam session
-        const { error } = await supabase
+        // CRITICAL: Update exam session as submitted FIRST (fast response)
+        const { error: sessionError } = await supabase
             .from('exam_sessions')
             .update({
                 is_submitted: true,
-                submitted_at: now.toISOString(),
+                submitted_at: nowISO,
                 submission_type: submissionType,
                 time_taken_seconds: timeTakenSeconds
             })
             .eq('id', examSession.id);
 
-        if (error) throw error;
+        if (sessionError) throw sessionError;
 
-        auditLog(
-            participant.id,
-            null,
-            'EXAM_SUBMITTED',
-            `Exam submitted (${submissionType}) for Round ${roundNumber}`,
-            roundNumber,
-            req,
-            { timeTakenSeconds, submissionType }
-        );
-
+        // RESPOND IMMEDIATELY TO CLIENT
         res.json({
             success: true,
             message: 'Exam submitted successfully',
-            data: {
-                timeTakenSeconds,
-                submissionType
+            data: { timeTakenSeconds, submissionType }
+        });
+
+        // ============================================================
+        // ALL HEAVY OPERATIONS RUN IN BACKGROUND (non-blocking)
+        // ============================================================
+        setImmediate(async () => {
+            try {
+                // 1. BULK INSERT ALL ANSWERS (single query)
+                if (answers && answers.length > 0) {
+                    // Get all questions for this round to check correct answers
+                    const { data: questions } = await supabase
+                        .from('questions')
+                        .select('id, correct_option')
+                        .eq('round_number', roundNumber);
+
+                    const questionMap = {};
+                    if (questions) {
+                        questions.forEach(q => { questionMap[q.id] = q.correct_option; });
+                    }
+
+                    // Prepare bulk insert data with correct answer checking
+                    const responsesToInsert = answers.map(ans => {
+                        const correctOption = questionMap[ans.question_id];
+                        const selectedOption = ans.selected_option?.toUpperCase() || null;
+                        const isCorrect = selectedOption && correctOption ? selectedOption === correctOption : null;
+
+                        return {
+                            participant_id: participant.id,
+                            question_id: ans.question_id,
+                            round_number: roundNumber,
+                            selected_option: selectedOption,
+                            is_correct: isCorrect,
+                            answered_at: nowISO
+                        };
+                    });
+
+                    // SINGLE BULK UPSERT (much faster than individual inserts)
+                    await supabase
+                        .from('responses')
+                        .upsert(responsesToInsert, { onConflict: 'participant_id,question_id' });
+                }
+
+                // 2. Calculate and store score (background)
+                const { data: responses } = await supabase
+                    .from('responses')
+                    .select('is_correct')
+                    .eq('participant_id', participant.id)
+                    .eq('round_number', roundNumber);
+
+                const correctAnswers = responses?.filter(r => r.is_correct === true).length || 0;
+
+                // Update exam session with score
+                await supabase
+                    .from('exam_sessions')
+                    .update({ correct_answers: correctAnswers })
+                    .eq('id', examSession.id);
+
+                // 3. Update participant last activity (background)
+                supabase.from('participants')
+                    .update({ last_activity: nowISO })
+                    .eq('id', participant.id)
+                    .then(() => { });
+
+                // 4. Audit log (fire-and-forget)
+                auditLog(
+                    participant.id,
+                    null,
+                    'EXAM_SUBMITTED',
+                    `Exam submitted (${submissionType}) for Round ${roundNumber} - Score: ${correctAnswers}/15`,
+                    roundNumber,
+                    req,
+                    { timeTakenSeconds, submissionType, score: correctAnswers }
+                );
+
+            } catch (bgError) {
+                console.error('Background submission processing error:', bgError);
             }
         });
+
     } catch (error) {
         console.error('Submit exam error:', error);
         res.status(500).json({
@@ -639,17 +649,19 @@ router.post('/submit-exam', requireParticipant, async (req, res) => {
 
 /**
  * POST /api/participant/tab-switch
- * Report tab switch violation
+ * Report tab switch violation - includes answers for potential auto-submit
  */
 router.post('/tab-switch', requireParticipant, async (req, res) => {
     try {
         const participant = req.participant;
-        const { violationType = 'tab_switch' } = req.body;
+        const { violationType = 'tab_switch', answers = [] } = req.body;
+        const now = new Date();
+        const nowISO = now.toISOString();
 
         // Get event state
         const { data: eventState } = await supabase
             .from('event_state')
-            .select('*')
+            .select('current_round, round_status')
             .eq('id', 1)
             .single();
 
@@ -678,6 +690,7 @@ router.post('/tab-switch', requireParticipant, async (req, res) => {
         }
 
         const newTabSwitchCount = (examSession.tab_switch_count || 0) + 1;
+        const shouldAutoSubmit = newTabSwitchCount >= 2;
 
         // Update tab switch count
         await supabase
@@ -687,6 +700,7 @@ router.post('/tab-switch', requireParticipant, async (req, res) => {
             })
             .eq('id', examSession.id);
 
+        // Audit log (fire-and-forget)
         auditLog(
             participant.id,
             null,
@@ -697,43 +711,104 @@ router.post('/tab-switch', requireParticipant, async (req, res) => {
             { violationType, count: newTabSwitchCount }
         );
 
-        // Check if should auto-submit (second violation)
-        const shouldAutoSubmit = newTabSwitchCount >= 2;
-
         if (shouldAutoSubmit) {
-            // Auto-submit the exam
+            // Auto-submit the exam with BULK answers
             const startTime = new Date(examSession.started_at);
-            const now = new Date();
             const timeTakenSeconds = Math.floor((now - startTime) / 1000);
 
             await supabase
                 .from('exam_sessions')
                 .update({
                     is_submitted: true,
-                    submitted_at: now.toISOString(),
+                    submitted_at: nowISO,
                     submission_type: 'auto_violation',
                     time_taken_seconds: timeTakenSeconds
                 })
                 .eq('id', examSession.id);
 
-            auditLog(
-                participant.id,
-                null,
-                'AUTO_SUBMIT_VIOLATION',
-                `Exam auto-submitted due to tab switch violations`,
-                roundNumber,
-                req
-            );
-        }
+            // Respond immediately
+            res.json({
+                success: true,
+                data: {
+                    tabSwitchCount: newTabSwitchCount,
+                    warning: false,
+                    autoSubmitted: true
+                }
+            });
 
-        res.json({
-            success: true,
-            data: {
-                tabSwitchCount: newTabSwitchCount,
-                warning: newTabSwitchCount === 1,
-                autoSubmitted: shouldAutoSubmit
-            }
-        });
+            // Process bulk answers in background
+            setImmediate(async () => {
+                try {
+                    if (answers && answers.length > 0) {
+                        // Get all questions for this round
+                        const { data: questions } = await supabase
+                            .from('questions')
+                            .select('id, correct_option')
+                            .eq('round_number', roundNumber);
+
+                        const questionMap = {};
+                        if (questions) {
+                            questions.forEach(q => { questionMap[q.id] = q.correct_option; });
+                        }
+
+                        // Prepare bulk insert data
+                        const responsesToInsert = answers.map(ans => {
+                            const correctOption = questionMap[ans.question_id];
+                            const selectedOption = ans.selected_option?.toUpperCase() || null;
+                            const isCorrect = selectedOption && correctOption ? selectedOption === correctOption : null;
+
+                            return {
+                                participant_id: participant.id,
+                                question_id: ans.question_id,
+                                round_number: roundNumber,
+                                selected_option: selectedOption,
+                                is_correct: isCorrect,
+                                answered_at: nowISO
+                            };
+                        });
+
+                        // Bulk upsert
+                        await supabase
+                            .from('responses')
+                            .upsert(responsesToInsert, { onConflict: 'participant_id,question_id' });
+
+                        // Calculate score
+                        const { data: responses } = await supabase
+                            .from('responses')
+                            .select('is_correct')
+                            .eq('participant_id', participant.id)
+                            .eq('round_number', roundNumber);
+
+                        const correctAnswers = responses?.filter(r => r.is_correct === true).length || 0;
+
+                        await supabase
+                            .from('exam_sessions')
+                            .update({ correct_answers: correctAnswers })
+                            .eq('id', examSession.id);
+                    }
+
+                    auditLog(
+                        participant.id,
+                        null,
+                        'AUTO_SUBMIT_VIOLATION',
+                        `Exam auto-submitted due to tab switch violations`,
+                        roundNumber,
+                        req
+                    );
+                } catch (bgError) {
+                    console.error('Background violation submit error:', bgError);
+                }
+            });
+        } else {
+            res.json({
+                success: true,
+                data: {
+                    tabSwitchCount: newTabSwitchCount,
+                    warning: newTabSwitchCount === 1,
+                    autoSubmitted: false
+                }
+            });
+        }
     } catch (error) {
         console.error('Tab switch error:', error);
         res.status(500).json({
