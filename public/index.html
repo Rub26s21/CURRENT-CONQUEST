@@ -211,14 +211,484 @@
     <!-- 3D Canvas Container -->
     <div id="canvas-container"></div>
 
-    <!-- Loading Screen -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="logo">
-            <div class="logo-icon">QC</div>
-            <span class="title-gradient">Quiz Conquest</span>
+    <!-- VSBEC Kanal 2026 Intro Animation Screen -->
+    <div class="intro-screen" id="introScreen">
+        <div class="intro-particles" id="introParticles"></div>
+
+        <div class="intro-logo-container">
+            <!-- Animated Torch -->
+            <div class="intro-torch">
+                <div class="torch-handle"></div>
+                <div class="torch-bowl"></div>
+                <div class="flame-container">
+                    <div class="flame flame-1"></div>
+                    <div class="flame flame-2"></div>
+                    <div class="flame flame-3"></div>
+                    <div class="flame-glow"></div>
+                </div>
+                <div class="torch-sparks">
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+
+            <!-- Logo Text -->
+            <div class="intro-text">
+                <div class="intro-vsbec">VSBEC</div>
+                <div class="intro-kanal">Kanal</div>
+                <div class="intro-year">2026</div>
+            </div>
         </div>
-        <div class="spinner spinner-lg"></div>
+
+        <div class="intro-tagline">ECE Professional Online Examination Platform</div>
+        <div class="intro-loading">
+            <div class="intro-loading-bar"></div>
+        </div>
     </div>
+
+    <style>
+        /* Intro Screen Styles */
+        .intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, #0a1628 0%, #000000 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            overflow: hidden;
+        }
+
+        .intro-screen.fade-out {
+            animation: introFadeOut 1s ease-out forwards;
+        }
+
+        @keyframes introFadeOut {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.1);
+                pointer-events: none;
+            }
+        }
+
+        .intro-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .intro-particles span {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 165, 0, 0.8);
+            border-radius: 50%;
+            animation: particleFloat 4s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+        }
+
+        @keyframes particleFloat {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .intro-logo-container {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            animation: logoEntrance 2s ease-out forwards;
+            transform: scale(0.8) translateY(50px);
+            opacity: 0;
+        }
+
+        @keyframes logoEntrance {
+            0% {
+                transform: scale(0.5) translateY(100px) rotateX(30deg);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.1) translateY(-20px) rotateX(-5deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1) translateY(0) rotateX(0deg);
+                opacity: 1;
+            }
+        }
+
+        /* Torch Styles */
+        .intro-torch {
+            position: relative;
+            width: 80px;
+            height: 200px;
+            animation: torchFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes torchFloat {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(-2deg);
+            }
+
+            50% {
+                transform: translateY(-10px) rotate(2deg);
+            }
+        }
+
+        .torch-handle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 100px;
+            background: linear-gradient(90deg, #8B4513, #CD853F, #8B4513);
+            border-radius: 5px;
+            box-shadow: inset -3px 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .torch-bowl {
+            position: absolute;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 25px;
+            background: linear-gradient(180deg, #CD853F, #8B4513);
+            border-radius: 5px 5px 10px 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .flame-container {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 100px;
+        }
+
+        .flame {
+            position: absolute;
+            bottom: 0;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            animation: flicker 0.5s ease-in-out infinite alternate;
+        }
+
+        .flame-1 {
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 80px;
+            background: linear-gradient(0deg, #ff6b35 0%, #ffa500 40%, #ffff00 80%, #fff 100%);
+            filter: blur(2px);
+        }
+
+        .flame-2 {
+            left: 30%;
+            transform: translateX(-50%);
+            width: 25px;
+            height: 50px;
+            background: linear-gradient(0deg, #ff6b35 0%, #ffa500 60%, #ffff00 100%);
+            animation-delay: 0.2s;
+            filter: blur(1px);
+        }
+
+        .flame-3 {
+            left: 70%;
+            transform: translateX(-50%);
+            width: 25px;
+            height: 50px;
+            background: linear-gradient(0deg, #ff6b35 0%, #ffa500 60%, #ffff00 100%);
+            animation-delay: 0.4s;
+            filter: blur(1px);
+        }
+
+        @keyframes flicker {
+            0% {
+                transform: translateX(-50%) scaleY(1) scaleX(1);
+                opacity: 1;
+            }
+
+            25% {
+                transform: translateX(-50%) scaleY(1.1) scaleX(0.9);
+            }
+
+            50% {
+                transform: translateX(-50%) scaleY(0.95) scaleX(1.05);
+            }
+
+            75% {
+                transform: translateX(-50%) scaleY(1.05) scaleX(0.95);
+            }
+
+            100% {
+                transform: translateX(-50%) scaleY(1) scaleX(1);
+                opacity: 0.9;
+            }
+        }
+
+        .flame-glow {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(ellipse, rgba(255, 165, 0, 0.6) 0%, rgba(255, 107, 53, 0.3) 40%, transparent 70%);
+            animation: glowPulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes glowPulse {
+            0% {
+                transform: translateX(-50%) scale(1);
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: translateX(-50%) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        .torch-sparks span {
+            position: absolute;
+            bottom: 60px;
+            width: 3px;
+            height: 3px;
+            background: #ffff00;
+            border-radius: 50%;
+            animation: spark 1.5s ease-out infinite;
+            box-shadow: 0 0 6px #ffa500;
+        }
+
+        .torch-sparks span:nth-child(1) {
+            left: 35%;
+            animation-delay: 0s;
+        }
+
+        .torch-sparks span:nth-child(2) {
+            left: 45%;
+            animation-delay: 0.2s;
+        }
+
+        .torch-sparks span:nth-child(3) {
+            left: 55%;
+            animation-delay: 0.4s;
+        }
+
+        .torch-sparks span:nth-child(4) {
+            left: 65%;
+            animation-delay: 0.6s;
+        }
+
+        .torch-sparks span:nth-child(5) {
+            left: 40%;
+            animation-delay: 0.8s;
+        }
+
+        .torch-sparks span:nth-child(6) {
+            left: 50%;
+            animation-delay: 1s;
+        }
+
+        .torch-sparks span:nth-child(7) {
+            left: 60%;
+            animation-delay: 1.2s;
+        }
+
+        .torch-sparks span:nth-child(8) {
+            left: 38%;
+            animation-delay: 0.3s;
+        }
+
+        .torch-sparks span:nth-child(9) {
+            left: 52%;
+            animation-delay: 0.7s;
+        }
+
+        .torch-sparks span:nth-child(10) {
+            left: 62%;
+            animation-delay: 1.1s;
+        }
+
+        @keyframes spark {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-80px) translateX(var(--spark-x, 10px)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .torch-sparks span:nth-child(odd) {
+            --spark-x: -15px;
+        }
+
+        .torch-sparks span:nth-child(even) {
+            --spark-x: 15px;
+        }
+
+        /* Text Styles */
+        .intro-text {
+            text-align: left;
+        }
+
+        .intro-vsbec {
+            font-family: 'Inter', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
+            animation: textGlow 2s ease-in-out infinite alternate;
+            animation-delay: 0.5s;
+            opacity: 0;
+            animation: textReveal 1s ease-out 0.5s forwards, textGlow 2s ease-in-out 1.5s infinite alternate;
+        }
+
+        .intro-kanal {
+            font-family: 'Inter', sans-serif;
+            font-size: 5rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            background: linear-gradient(180deg, #ffffff 0%, #ffa500 50%, #ff6b35 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 30px rgba(255, 165, 0, 0.8));
+            opacity: 0;
+            animation: textReveal 1s ease-out 0.8s forwards;
+        }
+
+        .intro-year {
+            font-family: 'Inter', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            letter-spacing: 8px;
+            color: rgba(255, 255, 255, 0.85);
+            text-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+            opacity: 0;
+            animation: textReveal 1s ease-out 1.1s forwards;
+        }
+
+        @keyframes textReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes textGlow {
+            0% {
+                text-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
+            }
+
+            100% {
+                text-shadow: 0 0 40px rgba(255, 165, 0, 0.8), 0 0 60px rgba(255, 107, 53, 0.4);
+            }
+        }
+
+        .intro-tagline {
+            margin-top: 40px;
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: textReveal 1s ease-out 1.5s forwards;
+        }
+
+        .intro-loading {
+            position: absolute;
+            bottom: 60px;
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            opacity: 0;
+            animation: textReveal 0.5s ease-out 2s forwards;
+        }
+
+        .intro-loading-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b35, #ffa500, #ffff00);
+            border-radius: 2px;
+            animation: loadingProgress 2.5s ease-in-out 2s forwards;
+        }
+
+        @keyframes loadingProgress {
+            0% {
+                width: 0%;
+            }
+
+            100% {
+                width: 100%;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .intro-logo-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .intro-torch {
+                transform: scale(0.8);
+            }
+
+            .intro-kanal {
+                font-size: 3.5rem;
+            }
+
+            .intro-text {
+                text-align: center;
+            }
+        }
+    </style>
 
     <!-- Main Login Page -->
     <main class="login-page" id="loginPage" style="display: none;">
@@ -501,7 +971,8 @@
             'use strict';
 
             // DOM Elements
-            const loadingScreen = document.getElementById('loadingScreen');
+            const introScreen = document.getElementById('introScreen');
+            const introParticles = document.getElementById('introParticles');
             const loginPage = document.getElementById('loginPage');
             const loginForm = document.getElementById('loginForm');
             const loginBtn = document.getElementById('loginBtn');
@@ -511,6 +982,29 @@
             const errorMessage = document.getElementById('errorMessage');
             const inactiveNotice = document.getElementById('inactiveNotice');
             const loginCard = document.getElementById('loginCard');
+
+            // Create floating particles for intro
+            function createIntroParticles() {
+                for (let i = 0; i < 30; i++) {
+                    const particle = document.createElement('span');
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + 50 + '%';
+                    particle.style.animationDelay = Math.random() * 4 + 's';
+                    particle.style.animationDuration = (3 + Math.random() * 3) + 's';
+                    introParticles.appendChild(particle);
+                }
+            }
+
+            // Show login page after intro
+            function showLoginAfterIntro() {
+                setTimeout(() => {
+                    introScreen.classList.add('fade-out');
+                    setTimeout(() => {
+                        introScreen.style.display = 'none';
+                        loginPage.style.display = 'flex';
+                    }, 1000);
+                }, 4500); // 4.5 seconds for full animation
+            }
 
             // API Helper
             async function api(endpoint, options = {}) {
@@ -549,22 +1043,21 @@
                     const result = await api('/api/participant/session');
 
                     if (result.success && result.authenticated) {
-                        // Already logged in, redirect to exam page
+                        // Already logged in, skip intro and redirect to exam page
+                        introScreen.style.display = 'none';
                         window.location.href = '/exam';
                         return;
                     }
 
-                    // Check if event is active
-                    const healthCheck = await api('/api/health');
-
-                    // Show login page
-                    loadingScreen.style.display = 'none';
-                    loginPage.style.display = 'flex';
+                    // Not logged in - show intro animation then login
+                    createIntroParticles();
+                    showLoginAfterIntro();
 
                 } catch (error) {
                     console.error('Session check error:', error);
-                    loadingScreen.style.display = 'none';
-                    loginPage.style.display = 'flex';
+                    // Still show intro animation
+                    createIntroParticles();
+                    showLoginAfterIntro();
                 }
             }
 
