@@ -22,6 +22,81 @@
     <link rel="stylesheet" href="/css/3d-theme.css">
 
     <style>
+        /* INTRO VIDEO OVERLAY styles */
+        #intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease-out, visibility 1s;
+        }
+
+        #intro-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Ensure video covers screen */
+        }
+
+        #intro-content {
+            position: relative;
+            z-index: 10000;
+            text-align: center;
+            color: white;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .intro-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 2rem;
+            box-shadow: 0 0 20px rgba(0, 85, 255, 0.3);
+        }
+
+        .intro-btn:hover {
+            background: white;
+            color: black;
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(0, 85, 255, 0.6);
+        }
+
+        #skip-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 10001;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+
         /* Page-specific styles */
         .login-page {
             min-height: 100vh;
@@ -186,6 +261,76 @@
 </head>
 
 <body>
+
+    <!-- INTRO VIDEO OVERLAY -->
+    <div id="intro-overlay">
+        <video id="intro-video" muted playsinline preload="auto">
+            <source src="/assets/intro.mp4" type="video/mp4">
+        </video>
+        <div id="intro-content">
+            <h1
+                style="font-size: 4rem; margin-bottom: 2rem; font-weight: 800; text-shadow: 0 0 30px rgba(0,0,0,0.8); letter-spacing: -2px;">
+                QUIZ CONQUEST</h1>
+            <button class="intro-btn" onclick="startExperience()">ENTER EVENT</button>
+        </div>
+        <button id="skip-btn" onclick="closeIntro()">SKIP INTRO</button>
+    </div>
+
+    <script>
+        // Intro Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const overlay = document.getElementById('intro-overlay');
+            const video = document.getElementById('intro-video');
+            const skipBtn = document.getElementById('skip-btn');
+            const content = document.getElementById('intro-content');
+
+            // Check if intro already played this session
+            if (sessionStorage.getItem('introPlayed')) {
+                overlay.style.display = 'none';
+                return;
+            }
+
+            // Attempt initial muted autoplay loop for background effect
+            video.loop = true;
+            video.play().catch(() => console.log("Autoplay blocked"));
+
+            window.startExperience = () => {
+                // Fade out text, play video with sound
+                content.style.transition = 'opacity 0.5s';
+                content.style.opacity = '0';
+
+                // Show skip button
+                skipBtn.style.opacity = '1';
+                skipBtn.style.pointerEvents = 'all';
+
+                // Unmute and restart for full experience
+                video.loop = false;
+                video.muted = false;
+                video.currentTime = 0;
+                video.volume = 1.0;
+
+                video.play().then(() => {
+                    // Success
+                }).catch((e) => {
+                    console.error("Play error:", e);
+                    closeIntro(); // Fallback
+                });
+            };
+
+            window.closeIntro = () => {
+                overlay.style.opacity = '0';
+                overlay.style.visibility = 'hidden';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    video.pause();
+                    sessionStorage.setItem('introPlayed', 'true');
+                }, 1000);
+            };
+
+            // When video ends, close intro
+            video.onended = window.closeIntro;
+        });
+    </script>
     <!-- 3D Background Logo - VSBEC Kanal 2026 -->
     <div class="background-logo">
         <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
