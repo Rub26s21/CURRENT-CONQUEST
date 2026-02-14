@@ -25,10 +25,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_USER = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'password';
-const TOTAL_USERS = 300;
-const BATCH_SIZE = 50;
-const DQ_USERS = 5;       // Users to disqualify via tab switch
-const PERFECT_USERS = 30;  // Users who get perfect scores
+const TOTAL_USERS = 5;       // DEMO SIZE
+const BATCH_SIZE = 5;
+const DQ_USERS = 1;          // 1 Cheater
+const PERFECT_USERS = 1;     // 1 Winner
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
