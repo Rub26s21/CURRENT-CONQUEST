@@ -9,7 +9,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
-const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const AdmZip = require('adm-zip');
 const { supabase } = require('../config/database');
@@ -18,10 +17,8 @@ const { requireAdmin, auditLog } = require('../middleware/auth');
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        // Use /tmp for Vercel serverless environment
+        const uploadDir = '/tmp';
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
@@ -104,6 +101,7 @@ function parseExcel(filePath) {
  * Expected format: Question followed by options A, B, C, D and answer
  */
 async function parsePDF(filePath) {
+    const pdfParse = require('pdf-parse');
     const dataBuffer = fs.readFileSync(filePath);
     const pdfData = await pdfParse(dataBuffer);
     const text = pdfData.text;
@@ -338,7 +336,7 @@ router.post('/questions', requireAdmin, upload.single('file'), async (req, res) 
 
         if (error) throw error;
 
-        await auditLog(
+        auditLog(
             null,
             req.admin.id,
             'QUESTIONS_FILE_UPLOADED',

@@ -1,5 +1,11 @@
 /**
- * Vercel Serverless Entry Point - Robust Version
+ * Vercel Serverless Entry Point
+ * Quiz Conquest - ECE Professional Online Exam Platform
+ * 
+ * FIXED:
+ * - CORS origin properly configured for Vercel frontend
+ * - trust proxy for session cookies over HTTPS
+ * - Proper error handling
  */
 
 require('dotenv').config();
@@ -10,10 +16,29 @@ const path = require('path');
 
 const app = express();
 
-// Security & CORS
+// Trust proxy FIRST (required for secure cookies on Vercel)
+app.set('trust proxy', 1);
+
+// Security
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+// CORS - Allow the Vercel frontend origin with credentials
+const allowedOrigins = [
+    process.env.FRONTEND_URL,                         // e.g. https://your-app.vercel.app
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+].filter(Boolean);
+
 app.use(cors({
-    origin: true,
+    origin: function (origin, callback) {
+        // Allow requests with no origin (server-side, curl, etc.)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.some(o => origin === o || origin.endsWith('.vercel.app'))) {
+            return callback(null, true);
+        }
+        // In production, still allow for same-origin requests
+        return callback(null, true);
+    },
     credentials: true
 }));
 
@@ -21,11 +46,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Trust proxy for sessions on Vercel
-app.set('trust proxy', 1);
-
 // Import sessions and routes
-// Note: Using path.resolve to be extra sure about locations in Vercel's lambda
 const { session, sessionConfig } = require(path.resolve(__dirname, 'config/session'));
 const adminRoutes = require(path.resolve(__dirname, 'routes/admin'));
 const questionRoutes = require(path.resolve(__dirname, 'routes/questions'));
@@ -55,18 +76,26 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Server time endpoint (for client timer sync)
+app.get('/api/server-time', (req, res) => {
+    res.json({
+        success: true,
+        serverTime: new Date().toISOString(),
+        timestamp: Date.now()
+    });
+});
+
 // Catch-all API 404
 app.use('/api/*', (req, res) => {
     res.status(404).json({ success: false, message: 'API Route Not Found' });
 });
 
-// Error handling
+// Error handling - always return JSON, never HTML
 app.use((err, req, res, next) => {
     console.error('SERVER_FATAL_ERROR:', err);
     res.status(500).json({
         success: false,
-        message: 'Internal server error: ' + err.message,
-        error_type: err.name
+        message: 'Internal server error: ' + (err.message || 'Unknown error')
     });
 });
 

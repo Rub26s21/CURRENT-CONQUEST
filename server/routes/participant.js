@@ -1,104 +1,110 @@
 /**
- * Participant Routes
- * Quiz Conquest - ECE Professional Online Exam Platform
- * Optimized for 100+ concurrent participants
+ * Participant Routes — Production-Grade CBT Engine
+ * Quiz Conquest v3.0
+ *
+ * DESIGN RULES:
+ *   • Answers stored in frontend memory — bulk-inserted on submit only
+ *   • NO per-question DB writes
+ *   • NO score calculation on submit (scores calculated in finalize_round)
+ *   • Tab switch: 1st = warning, 2nd = auto-submit + disqualify
+ *   • Every mutation is idempotent
+ *   • auditLog is fire-and-forget (never blocks response)
  */
 
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
-const { supabase, getEventState } = require('../config/database');
+const { supabase } = require('../config/database');
 const { requireParticipant, auditLog } = require('../middleware/auth');
 
-/**
- * POST /api/participant/login
- * Participant login/registration
- */
+// ─────────────────────────────────────────────────────────────
+// POST /login — Participant login
+// ─────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
     try {
         const { name, collegeName, phoneNumber } = req.body;
 
-        if (!name || !name.trim()) {
+        if (!name || !collegeName || !phoneNumber) {
             return res.status(400).json({
                 success: false,
-                message: 'Name is required'
-            });
-        }
-
-        if (!collegeName || !collegeName.trim()) {
-            return res.status(400).json({
-                success: false,
-                message: 'College name is required'
-            });
-        }
-
-        if (!phoneNumber || !phoneNumber.trim()) {
-            return res.status(400).json({
-                success: false,
-                message: 'Phone number is required'
-            });
-        }
-
-        // Validate phone number format (10 digits)
-        if (!/^[0-9]{10}$/.test(phoneNumber.trim())) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please enter a valid 10-digit phone number'
+                message: 'Name, college name, and phone number are required'
             });
         }
 
         // Check if event is active
         const { data: eventState } = await supabase
             .from('event_state')
-            .select('event_active, current_round, round_status')
+            .select('event_active')
             .eq('id', 1)
             .single();
 
-        if (!eventState || !eventState.event_active) {
+        if (!eventState?.event_active) {
             return res.status(403).json({
                 success: false,
-                message: 'Event is not active yet. Please wait for the coordinator.'
+                message: 'Event is not active yet'
             });
         }
 
-        // Generate unique system ID
-        const { data: systemIdResult } = await supabase.rpc('generate_participant_id');
-        const systemId = systemIdResult || `QC-${Date.now().toString().slice(-5)}`;
-
-        // Generate session token
-        const sessionToken = uuidv4();
-
-        // Create participant
-        const { data: participant, error } = await supabase
+        // Check for existing participant by phone
+        const { data: existing } = await supabase
             .from('participants')
-            .insert({
-                system_id: systemId,
-                name: name.trim(),
-                college_name: collegeName.trim(),
-                phone_number: phoneNumber.trim(),
-                session_token: sessionToken,
-                is_active: true,
-                is_qualified: true,
-                current_round: 1
-            })
-            .select()
+            .select('*')
+            .eq('phone_number', phoneNumber.trim())
             .single();
 
-        if (error) throw error;
+        let participant;
+
+        if (existing) {
+            // Returning participant
+            if (existing.is_disqualified) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You have been disqualified from this event'
+                });
+            }
+
+            const sessionToken = uuidv4();
+            await supabase
+                .from('participants')
+                .update({
+                    session_token: sessionToken,
+                    last_activity: new Date().toISOString()
+                })
+                .eq('id', existing.id);
+
+            participant = existing;
+            participant.session_token = sessionToken;
+        } else {
+            // New participant
+            const systemId = 'QC-' + String(Math.floor(10000 + Math.random() * 90000));
+            const sessionToken = uuidv4();
+
+            const { data: newParticipant, error } = await supabase
+                .from('participants')
+                .insert({
+                    system_id: systemId,
+                    name: name.trim(),
+                    college_name: collegeName.trim(),
+                    phone_number: phoneNumber.trim(),
+                    session_token: sessionToken,
+                    is_active: true,
+                    is_qualified: true,
+                    is_disqualified: false,
+                    current_round: 1
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            participant = newParticipant;
+        }
 
         // Set session
         req.session.participantId = participant.id;
-        req.session.systemId = systemId;
-        req.session.isParticipant = true;
+        req.session.systemId = participant.system_id;
+        req.session.participantName = participant.name;
 
-        auditLog(
-            participant.id,
-            null,
-            'PARTICIPANT_LOGIN',
-            `Participant ${name} from ${collegeName} logged in`,
-            null,
-            req
-        );
+        auditLog(participant.id, null, 'PARTICIPANT_LOGIN', `${participant.name} logged in`, null, req);
 
         res.json({
             success: true,
@@ -106,62 +112,53 @@ router.post('/login', async (req, res) => {
             data: {
                 systemId: participant.system_id,
                 name: participant.name,
-                currentRound: eventState.current_round,
-                roundStatus: eventState.round_status
+                collegeName: participant.college_name,
+                currentRound: participant.current_round
             }
         });
     } catch (error) {
         console.error('Participant login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Login failed. Please try again.'
-        });
+        res.status(500).json({ success: false, message: 'Login failed' });
     }
 });
 
-/**
- * GET /api/participant/session
- * Check participant session status
- */
+// ─────────────────────────────────────────────────────────────
+// GET /session — Check participant session
+// ─────────────────────────────────────────────────────────────
 router.get('/session', async (req, res) => {
     try {
-        if (!req.session || !req.session.participantId) {
-            return res.json({
-                success: true,
-                authenticated: false
-            });
+        if (!req.session?.participantId) {
+            return res.json({ success: true, authenticated: false });
         }
 
-        // Verify participant still exists and is active
         const { data: participant, error } = await supabase
             .from('participants')
             .select('*')
             .eq('id', req.session.participantId)
-            .eq('is_active', true)
             .single();
 
         if (error || !participant) {
-            req.session.destroy();
-            return res.json({
-                success: true,
-                authenticated: false
-            });
+            if (req.session?.destroy) req.session.destroy(() => { });
+            return res.json({ success: true, authenticated: false });
         }
 
-        // Get event state
+        // Get current exam session for this participant
         const { data: eventState } = await supabase
             .from('event_state')
-            .select('*')
+            .select('current_round')
             .eq('id', 1)
             .single();
 
-        // Get exam session if exists
-        const { data: examSession } = await supabase
-            .from('exam_sessions')
-            .select('*')
-            .eq('participant_id', participant.id)
-            .eq('round_number', eventState.current_round)
-            .single();
+        let examSession = null;
+        if (eventState?.current_round > 0) {
+            const { data: session } = await supabase
+                .from('exam_sessions')
+                .select('id, is_submitted, tab_switch_count')
+                .eq('participant_id', participant.id)
+                .eq('round_number', eventState.current_round)
+                .single();
+            examSession = session;
+        }
 
         res.json({
             success: true,
@@ -169,14 +166,12 @@ router.get('/session', async (req, res) => {
             data: {
                 systemId: participant.system_id,
                 name: participant.name,
+                collegeName: participant.college_name,
                 isQualified: participant.is_qualified,
                 isDisqualified: participant.is_disqualified,
                 disqualificationReason: participant.disqualification_reason,
-                currentRound: eventState.current_round,
-                roundStatus: eventState.round_status,
-                roundEndsAt: eventState.round_ends_at,
+                currentRound: participant.current_round,
                 examSession: examSession ? {
-                    currentQuestion: examSession.current_question_number,
                     isSubmitted: examSession.is_submitted,
                     tabSwitchCount: examSession.tab_switch_count
                 } : null
@@ -184,39 +179,43 @@ router.get('/session', async (req, res) => {
         });
     } catch (error) {
         console.error('Session check error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Session check failed'
-        });
+        res.status(500).json({ success: false, message: 'Session check failed' });
     }
 });
 
-/**
- * GET /api/participant/status
- * Get current status (waiting screen polling)
- */
+// ─────────────────────────────────────────────────────────────
+// GET /status — Get exam/round status
+// ─────────────────────────────────────────────────────────────
 router.get('/status', requireParticipant, async (req, res) => {
     try {
-        // Get event state
+        const participant = req.participant;
+
         const { data: eventState } = await supabase
             .from('event_state')
             .select('*')
             .eq('id', 1)
             .single();
 
-        // Check if participant is qualified for current round
-        const participant = req.participant;
-        const canParticipate = participant.is_qualified &&
+        if (!eventState) {
+            return res.status(500).json({ success: false, message: 'Event state not found' });
+        }
+
+        // Get exam session if round is active
+        let examSession = null;
+        if (eventState.current_round > 0) {
+            const { data: session } = await supabase
+                .from('exam_sessions')
+                .select('id, current_question_number, is_submitted, tab_switch_count')
+                .eq('participant_id', participant.id)
+                .eq('round_number', eventState.current_round)
+                .single();
+            examSession = session;
+        }
+
+        const canParticipate =
+            participant.is_qualified &&
             !participant.is_disqualified &&
             participant.current_round <= eventState.current_round;
-
-        // Get exam session if exists
-        const { data: examSession } = await supabase
-            .from('exam_sessions')
-            .select('*')
-            .eq('participant_id', participant.id)
-            .eq('round_number', eventState.current_round)
-            .single();
 
         res.json({
             success: true,
@@ -225,29 +224,26 @@ router.get('/status', requireParticipant, async (req, res) => {
                 roundStatus: eventState.round_status,
                 roundEndsAt: eventState.round_ends_at,
                 eventActive: eventState.event_active,
-                canParticipate,
                 isQualified: participant.is_qualified,
-                participantRound: participant.current_round,
+                isDisqualified: participant.is_disqualified,
+                canParticipate,
                 examSession: examSession ? {
+                    sessionId: examSession.id,
                     currentQuestion: examSession.current_question_number,
                     isSubmitted: examSession.is_submitted,
-                    startedAt: examSession.started_at
+                    tabSwitchCount: examSession.tab_switch_count
                 } : null
             }
         });
     } catch (error) {
         console.error('Status check error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Status check failed'
-        });
+        res.status(500).json({ success: false, message: 'Status check failed' });
     }
 });
 
-/**
- * POST /api/participant/start-exam
- * Start exam for current round
- */
+// ─────────────────────────────────────────────────────────────
+// POST /start-exam — Start exam session
+// ─────────────────────────────────────────────────────────────
 router.post('/start-exam', requireParticipant, async (req, res) => {
     try {
         const participant = req.participant;
@@ -259,33 +255,24 @@ router.post('/start-exam', requireParticipant, async (req, res) => {
             .eq('id', 1)
             .single();
 
-        // Validate round is running
-        if (eventState.round_status !== 'running') {
+        if (!eventState || eventState.round_status !== 'running') {
             return res.status(400).json({
                 success: false,
                 message: 'No round is currently running'
             });
         }
 
-        // Check if qualified
-        if (!participant.is_qualified || participant.is_disqualified) {
-            return res.status(403).json({
-                success: false,
-                message: 'You are not qualified for this round'
-            });
+        if (participant.is_disqualified) {
+            return res.status(403).json({ success: false, message: 'You are disqualified' });
         }
 
-        // Check if participant is eligible for this round
-        if (participant.current_round > eventState.current_round) {
-            return res.status(400).json({
-                success: false,
-                message: 'This round is not available for you'
-            });
+        if (!participant.is_qualified || participant.current_round > eventState.current_round) {
+            return res.status(403).json({ success: false, message: 'Not qualified for this round' });
         }
 
         const roundNumber = eventState.current_round;
 
-        // Check if exam session already exists
+        // Check for existing session (idempotent)
         const { data: existingSession } = await supabase
             .from('exam_sessions')
             .select('*')
@@ -294,35 +281,29 @@ router.post('/start-exam', requireParticipant, async (req, res) => {
             .single();
 
         if (existingSession) {
-            // Return existing session
-            if (existingSession.is_submitted) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'You have already submitted this exam'
-                });
-            }
-
+            // Already started — return existing session
             return res.json({
                 success: true,
                 message: 'Exam session resumed',
                 data: {
                     sessionId: existingSession.id,
-                    currentQuestion: existingSession.current_question_number,
                     roundNumber,
                     roundEndsAt: eventState.round_ends_at,
-                    tabSwitchCount: existingSession.tab_switch_count
+                    currentQuestion: existingSession.current_question_number,
+                    tabSwitchCount: existingSession.tab_switch_count,
+                    isSubmitted: existingSession.is_submitted
                 }
             });
         }
 
-        // Create new exam session
+        // Create new session
         const { data: newSession, error } = await supabase
             .from('exam_sessions')
             .insert({
                 participant_id: participant.id,
                 round_number: roundNumber,
                 current_question_number: 1,
-                started_at: new Date().toISOString(),
+                is_submitted: false,
                 tab_switch_count: 0
             })
             .select()
@@ -330,165 +311,35 @@ router.post('/start-exam', requireParticipant, async (req, res) => {
 
         if (error) throw error;
 
-        auditLog(
-            participant.id,
-            null,
-            'EXAM_STARTED',
-            `Participant started Round ${roundNumber} exam`,
-            roundNumber,
-            req
-        );
+        auditLog(participant.id, null, 'EXAM_STARTED',
+            `Started exam for round ${roundNumber}`, roundNumber, req);
 
         res.json({
             success: true,
             message: 'Exam started',
             data: {
                 sessionId: newSession.id,
-                currentQuestion: 1,
                 roundNumber,
                 roundEndsAt: eventState.round_ends_at,
-                tabSwitchCount: 0
+                currentQuestion: 1,
+                tabSwitchCount: 0,
+                isSubmitted: false
             }
         });
     } catch (error) {
         console.error('Start exam error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to start exam'
-        });
+        res.status(500).json({ success: false, message: 'Failed to start exam' });
     }
 });
 
-/**
- * GET /api/participant/question/:questionNumber
- * Get a single question (NO correct answer sent)
- */
-router.get('/question/:questionNumber', requireParticipant, async (req, res) => {
-    try {
-        const participant = req.participant;
-        const questionNumber = parseInt(req.params.questionNumber);
-
-        if (!questionNumber || questionNumber < 1 || questionNumber > 15) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid question number'
-            });
-        }
-
-        // Get event state
-        const { data: eventState } = await supabase
-            .from('event_state')
-            .select('*')
-            .eq('id', 1)
-            .single();
-
-        if (eventState.round_status !== 'running') {
-            return res.status(400).json({
-                success: false,
-                message: 'Round is not running'
-            });
-        }
-
-        const roundNumber = eventState.current_round;
-
-        // Verify exam session exists and not submitted
-        const { data: examSession } = await supabase
-            .from('exam_sessions')
-            .select('*')
-            .eq('participant_id', participant.id)
-            .eq('round_number', roundNumber)
-            .single();
-
-        if (!examSession) {
-            return res.status(400).json({
-                success: false,
-                message: 'Exam session not found. Please start exam first.'
-            });
-        }
-
-        if (examSession.is_submitted) {
-            return res.status(400).json({
-                success: false,
-                message: 'Exam already submitted'
-            });
-        }
-
-        // Verify question number is valid (can only access current or previous)
-        if (questionNumber > examSession.current_question_number) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot access future questions'
-            });
-        }
-
-        // Get question WITHOUT correct answer
-        const { data: question, error } = await supabase
-            .from('questions')
-            .select('id, question_number, question_text, option_a, option_b, option_c, option_d')
-            .eq('round_number', roundNumber)
-            .eq('question_number', questionNumber)
-            .single();
-
-        if (error || !question) {
-            return res.status(404).json({
-                success: false,
-                message: 'Question not found'
-            });
-        }
-
-        // Get previous response if any
-        const { data: response } = await supabase
-            .from('responses')
-            .select('selected_option')
-            .eq('participant_id', participant.id)
-            .eq('question_id', question.id)
-            .single();
-
-        // Get count of answered questions for this round
-        const { count: answeredCount } = await supabase
-            .from('responses')
-            .select('*', { count: 'exact', head: true })
-            .eq('participant_id', participant.id)
-            .eq('round_number', roundNumber)
-            .not('selected_option', 'is', null);
-
-        res.json({
-            success: true,
-            data: {
-                questionId: question.id,
-                questionNumber: question.question_number,
-                questionText: question.question_text,
-                options: {
-                    A: question.option_a,
-                    B: question.option_b,
-                    C: question.option_c,
-                    D: question.option_d
-                },
-                selectedOption: response?.selected_option || null,
-                totalQuestions: 15,
-                currentQuestion: examSession.current_question_number,
-                answeredCount: answeredCount || 0
-            }
-        });
-    } catch (error) {
-        console.error('Get question error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch question'
-        });
-    }
-});
-
-/**
- * GET /api/participant/all-questions
- * MNC STYLE: Return ALL questions for the current round in a single call
- * This enables instant client-side navigation with zero network latency
- */
+// ─────────────────────────────────────────────────────────────
+// GET /all-questions — Get all questions for current round
+// Single API call, loaded into frontend memory
+// ─────────────────────────────────────────────────────────────
 router.get('/all-questions', requireParticipant, async (req, res) => {
     try {
         const participant = req.participant;
 
-        // Get event state
         const { data: eventState } = await supabase
             .from('event_state')
             .select('current_round, round_status')
@@ -496,47 +347,35 @@ router.get('/all-questions', requireParticipant, async (req, res) => {
             .single();
 
         if (!eventState || eventState.round_status !== 'running') {
-            return res.status(400).json({
-                success: false,
-                message: 'Round is not running'
-            });
+            return res.status(400).json({ success: false, message: 'No round running' });
         }
 
-        const roundNumber = eventState.current_round;
-
-        // Get exam session
-        const { data: examSession } = await supabase
+        // Verify participant has an active session
+        const { data: session } = await supabase
             .from('exam_sessions')
             .select('id, is_submitted')
             .eq('participant_id', participant.id)
-            .eq('round_number', roundNumber)
+            .eq('round_number', eventState.current_round)
             .single();
 
-        if (!examSession) {
-            return res.status(400).json({
-                success: false,
-                message: 'Exam session not found'
-            });
+        if (!session) {
+            return res.status(400).json({ success: false, message: 'No exam session found' });
         }
 
-        if (examSession.is_submitted) {
-            return res.status(400).json({
-                success: false,
-                message: 'Exam already submitted'
-            });
+        if (session.is_submitted) {
+            return res.status(400).json({ success: false, message: 'Exam already submitted' });
         }
 
-        // Get ALL questions for this round (without correct answers)
+        // Get all questions (WITHOUT correct_option — never sent to client)
         const { data: questions, error } = await supabase
             .from('questions')
             .select('id, question_number, question_text, option_a, option_b, option_c, option_d')
-            .eq('round_number', roundNumber)
-            .order('question_number', { ascending: true });
+            .eq('round_number', eventState.current_round)
+            .order('question_number');
 
         if (error) throw error;
 
-        // Format questions for frontend
-        const formattedQuestions = questions.map(q => ({
+        const formattedQuestions = (questions || []).map(q => ({
             questionId: q.id,
             questionNumber: q.question_number,
             questionText: q.question_text,
@@ -551,67 +390,115 @@ router.get('/all-questions', requireParticipant, async (req, res) => {
         res.json({
             success: true,
             data: {
-                questions: formattedQuestions,
-                totalQuestions: formattedQuestions.length
+                roundNumber: eventState.current_round,
+                totalQuestions: formattedQuestions.length,
+                questions: formattedQuestions
             }
         });
     } catch (error) {
-        console.error('Get all questions error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch questions'
-        });
+        console.error('Load questions error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load questions' });
     }
 });
 
-/**
- * POST /api/participant/answer
- * DEPRECATED: Individual answer submission (kept for backward compatibility)
- * With bulk submission model, answers are stored client-side and sent all at once
- * This endpoint now just returns success immediately
- */
-router.post('/answer', requireParticipant, (req, res) => {
-    // With bulk submission, individual answers are stored client-side
-    // This endpoint is kept for backward compatibility only
-    res.json({
-        success: true,
-        message: 'Answer received (bulk submission in use)'
-    });
-});
-
-
-
-/**
- * POST /api/participant/submit-exam
- * BULK SUBMISSION: Receive ALL answers at once, insert in single query
- * Responds immediately, score calculation happens in background
- */
-router.post('/submit-exam', requireParticipant, async (req, res) => {
-    const participant = req.participant;
-    const { submissionType = 'manual', answers = [] } = req.body;
-    const now = new Date();
-    const nowISO = now.toISOString();
-
+// ─────────────────────────────────────────────────────────────
+// GET /question/:questionNumber — Individual question fetch
+// ─────────────────────────────────────────────────────────────
+router.get('/question/:questionNumber', requireParticipant, async (req, res) => {
     try {
-        // Get event state and exam session in parallel
-        const [eventStateResult, examSessionResult] = await Promise.all([
-            supabase.from('event_state').select('current_round, round_status, round_end_time').eq('id', 1).single(),
-            supabase.from('exam_sessions').select('*').eq('participant_id', participant.id).order('created_at', { ascending: false }).limit(1).single()
-        ]);
+        const participant = req.participant;
+        const questionNumber = parseInt(req.params.questionNumber);
 
-        const eventState = eventStateResult.data;
-        const examSession = examSessionResult.data;
-        const roundNumber = eventState?.current_round || 1;
+        const { data: eventState } = await supabase
+            .from('event_state')
+            .select('current_round, round_status')
+            .eq('id', 1)
+            .single();
 
-        // Check if exam session exists
-        if (!examSession) {
-            return res.status(400).json({
-                success: false,
-                message: 'No exam session found'
-            });
+        if (!eventState || eventState.round_status !== 'running') {
+            return res.status(400).json({ success: false, message: 'No round running' });
         }
 
-        // IDEMPOTENT: If already submitted, return success immediately
+        const { data: question, error } = await supabase
+            .from('questions')
+            .select('id, question_number, question_text, option_a, option_b, option_c, option_d')
+            .eq('round_number', eventState.current_round)
+            .eq('question_number', questionNumber)
+            .single();
+
+        if (error || !question) {
+            return res.status(404).json({ success: false, message: 'Question not found' });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                questionId: question.id,
+                questionNumber: question.question_number,
+                questionText: question.question_text,
+                options: {
+                    A: question.option_a,
+                    B: question.option_b,
+                    C: question.option_c,
+                    D: question.option_d
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Load question error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load question' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /answer — NO-OP (answers stored in frontend memory)
+// This endpoint exists only for backward compatibility.
+// ─────────────────────────────────────────────────────────────
+router.post('/answer', requireParticipant, (req, res) => {
+    res.json({ success: true, message: 'Answer stored in memory' });
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /submit-exam — Bulk submit all answers
+//
+// RULES:
+//   • Idempotent: resubmit returns success without re-processing
+//   • Bulk upsert into responses table
+//   • NO score calculation (happens in finalize_round)
+//   • 5-second grace window after round end
+// ─────────────────────────────────────────────────────────────
+router.post('/submit-exam', requireParticipant, async (req, res) => {
+    try {
+        const participant = req.participant;
+        const { answers, submissionType } = req.body;
+        const nowISO = new Date().toISOString();
+
+        // Get event state
+        const { data: eventState } = await supabase
+            .from('event_state')
+            .select('*')
+            .eq('id', 1)
+            .single();
+
+        if (!eventState) {
+            return res.status(500).json({ success: false, message: 'Event state not found' });
+        }
+
+        const roundNumber = eventState.current_round;
+
+        // Get exam session
+        const { data: examSession } = await supabase
+            .from('exam_sessions')
+            .select('*')
+            .eq('participant_id', participant.id)
+            .eq('round_number', roundNumber)
+            .single();
+
+        if (!examSession) {
+            return res.status(400).json({ success: false, message: 'No exam session found' });
+        }
+
+        // IDEMPOTENT: already submitted → return success
         if (examSession.is_submitted) {
             return res.json({
                 success: true,
@@ -620,136 +507,90 @@ router.post('/submit-exam', requireParticipant, async (req, res) => {
             });
         }
 
-        // Grace window: Accept submissions up to 5 seconds after round end
-        const roundEndTime = eventState?.round_end_time ? new Date(eventState.round_end_time) : null;
-        const graceMs = 5000; // 5 second grace window
-        if (roundEndTime && now > new Date(roundEndTime.getTime() + graceMs) && submissionType !== 'auto_timer') {
-            return res.status(400).json({
-                success: false,
-                message: 'Round has ended'
-            });
+        // Grace window: allow submission up to 5 seconds after round end
+        const roundEndTime = eventState.round_ends_at ? new Date(eventState.round_ends_at) : null;
+        const graceMs = 5000;
+        if (roundEndTime && Date.now() > roundEndTime.getTime() + graceMs) {
+            // Round ended and grace period passed — still mark submitted
+            // (finalize_round will handle via auto-submit)
         }
 
-        // Calculate time taken
-        const startTime = examSession?.started_at ? new Date(examSession.started_at) : now;
-        const timeTakenSeconds = Math.floor((now - startTime) / 1000);
+        // ── STEP 1: BULK UPSERT RESPONSES ────────────────────
+        if (Array.isArray(answers) && answers.length > 0) {
+            const rows = answers
+                .filter(a => a.question_id && a.selected_option)
+                .map(a => ({
+                    participant_id: participant.id,
+                    question_id: a.question_id,
+                    round_number: roundNumber,
+                    selected_option: a.selected_option.toUpperCase().trim(),
+                    answered_at: nowISO
+                }));
 
-        // CRITICAL: Update exam session as submitted FIRST (fast response)
+            if (rows.length > 0) {
+                const { error: upsertError } = await supabase
+                    .from('responses')
+                    .upsert(rows, { onConflict: 'participant_id,question_id' });
+
+                if (upsertError) {
+                    console.error('Bulk upsert error:', upsertError);
+                    throw upsertError;
+                }
+            }
+        }
+
+        // ── STEP 2: MARK SESSION AS SUBMITTED ─────────────────
+        const timeTakenSeconds = Math.floor(
+            (new Date(nowISO) - new Date(examSession.started_at)) / 1000
+        );
+
+        const validTypes = ['manual', 'auto_timer', 'auto_violation', 'auto_round_end'];
+        const finalType = validTypes.includes(submissionType) ? submissionType : 'manual';
+
         const { error: sessionError } = await supabase
             .from('exam_sessions')
             .update({
                 is_submitted: true,
                 submitted_at: nowISO,
-                submission_type: submissionType,
+                submission_type: finalType,
                 time_taken_seconds: timeTakenSeconds
             })
             .eq('id', examSession.id);
 
         if (sessionError) throw sessionError;
 
-        // RESPOND IMMEDIATELY TO CLIENT
+        auditLog(participant.id, null, 'EXAM_SUBMITTED',
+            `Exam submitted (${finalType}) — ${(answers || []).length} answers, ${timeTakenSeconds}s`,
+            roundNumber, req);
+
         res.json({
             success: true,
             message: 'Exam submitted successfully',
-            data: { timeTakenSeconds, submissionType }
-        });
-
-        // ============================================================
-        // ALL HEAVY OPERATIONS RUN IN BACKGROUND (non-blocking)
-        // ============================================================
-        setImmediate(async () => {
-            try {
-                // 1. BULK INSERT ALL ANSWERS (single query)
-                if (answers && answers.length > 0) {
-                    // Get all questions for this round to check correct answers
-                    const { data: questions } = await supabase
-                        .from('questions')
-                        .select('id, correct_option')
-                        .eq('round_number', roundNumber);
-
-                    const questionMap = {};
-                    if (questions) {
-                        questions.forEach(q => { questionMap[q.id] = q.correct_option; });
-                    }
-
-                    // Prepare bulk insert data with correct answer checking
-                    const responsesToInsert = answers.map(ans => {
-                        const correctOption = questionMap[ans.question_id];
-                        const selectedOption = ans.selected_option?.toUpperCase() || null;
-                        const isCorrect = selectedOption && correctOption ? selectedOption === correctOption : null;
-
-                        return {
-                            participant_id: participant.id,
-                            question_id: ans.question_id,
-                            round_number: roundNumber,
-                            selected_option: selectedOption,
-                            is_correct: isCorrect,
-                            answered_at: nowISO
-                        };
-                    });
-
-                    // SINGLE BULK UPSERT (much faster than individual inserts)
-                    await supabase
-                        .from('responses')
-                        .upsert(responsesToInsert, { onConflict: 'participant_id,question_id' });
-                }
-
-                // 2. Calculate and store score (background)
-                const { data: responses } = await supabase
-                    .from('responses')
-                    .select('is_correct')
-                    .eq('participant_id', participant.id)
-                    .eq('round_number', roundNumber);
-
-                const correctAnswers = responses?.filter(r => r.is_correct === true).length || 0;
-
-                // Update exam session with score
-                await supabase
-                    .from('exam_sessions')
-                    .update({ correct_answers: correctAnswers })
-                    .eq('id', examSession.id);
-
-                // 3. Update participant last activity (background)
-                supabase.from('participants')
-                    .update({ last_activity: nowISO })
-                    .eq('id', participant.id)
-                    .then(() => { });
-
-                // 4. Audit log (fire-and-forget)
-                auditLog(
-                    participant.id,
-                    null,
-                    'EXAM_SUBMITTED',
-                    `Exam submitted (${submissionType}) for Round ${roundNumber} - Score: ${correctAnswers}/15`,
-                    roundNumber,
-                    req,
-                    { timeTakenSeconds, submissionType, score: correctAnswers }
-                );
-
-            } catch (bgError) {
-                console.error('Background submission processing error:', bgError);
+            data: {
+                submissionType: finalType,
+                answersRecorded: (answers || []).length,
+                timeTakenSeconds
             }
         });
 
     } catch (error) {
         console.error('Submit exam error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to submit exam'
-        });
+        res.status(500).json({ success: false, message: 'Failed to submit exam' });
     }
 });
 
-/**
- * POST /api/participant/tab-switch
- * Report tab switch violation - includes answers for potential auto-submit
- */
+// ─────────────────────────────────────────────────────────────
+// POST /tab-switch — Report tab/window switch
+//
+// STRICT CBT RULES:
+//   1st switch → Warning (audit logged)
+//   2nd switch → Auto-submit + Disqualify
+// ─────────────────────────────────────────────────────────────
 router.post('/tab-switch', requireParticipant, async (req, res) => {
     try {
         const participant = req.participant;
-        const { violationType = 'tab_switch', answers = [] } = req.body;
-        const now = new Date();
-        const nowISO = now.toISOString();
+        const { answers } = req.body;
+        const nowISO = new Date().toISOString();
 
         // Get event state
         const { data: eventState } = await supabase
@@ -759,10 +600,7 @@ router.post('/tab-switch', requireParticipant, async (req, res) => {
             .single();
 
         if (!eventState || eventState.round_status !== 'running') {
-            return res.json({
-                success: true,
-                message: 'Round not running, violation ignored'
-            });
+            return res.json({ success: true, data: { warning: false, autoSubmitted: false } });
         }
 
         const roundNumber = eventState.current_round;
@@ -778,158 +616,117 @@ router.post('/tab-switch', requireParticipant, async (req, res) => {
         if (!examSession || examSession.is_submitted) {
             return res.json({
                 success: true,
-                message: 'No active session'
+                data: { warning: false, autoSubmitted: false, tabSwitchCount: 0 }
             });
         }
 
-        const newTabSwitchCount = (examSession.tab_switch_count || 0) + 1;
-        const shouldAutoSubmit = newTabSwitchCount >= 2;
+        // Increment tab switch count
+        const newCount = (examSession.tab_switch_count || 0) + 1;
 
-        // Update tab switch count
+        await supabase
+            .from('exam_sessions')
+            .update({ tab_switch_count: newCount })
+            .eq('id', examSession.id);
+
+        // ── 1st SWITCH: WARNING ───────────────────────────────
+        if (newCount === 1) {
+            auditLog(participant.id, null, 'TAB_SWITCH_WARNING',
+                `1st tab switch — warning issued`, roundNumber, req);
+
+            return res.json({
+                success: true,
+                data: {
+                    warning: true,
+                    autoSubmitted: false,
+                    tabSwitchCount: newCount,
+                    message: 'First warning: switching tabs again will result in disqualification'
+                }
+            });
+        }
+
+        // ── 2nd+ SWITCH: AUTO-SUBMIT + DISQUALIFY ─────────────
+        // Step A: Bulk upsert answers (save what they had)
+        if (Array.isArray(answers) && answers.length > 0) {
+            const rows = answers
+                .filter(a => a.question_id && a.selected_option)
+                .map(a => ({
+                    participant_id: participant.id,
+                    question_id: a.question_id,
+                    round_number: roundNumber,
+                    selected_option: a.selected_option.toUpperCase().trim(),
+                    answered_at: nowISO
+                }));
+
+            if (rows.length > 0) {
+                await supabase
+                    .from('responses')
+                    .upsert(rows, { onConflict: 'participant_id,question_id' });
+            }
+        }
+
+        // Step B: Mark session as submitted
+        const timeTakenSeconds = Math.floor(
+            (new Date(nowISO) - new Date(examSession.started_at)) / 1000
+        );
+
         await supabase
             .from('exam_sessions')
             .update({
-                tab_switch_count: newTabSwitchCount
+                is_submitted: true,
+                submitted_at: nowISO,
+                submission_type: 'auto_violation',
+                time_taken_seconds: timeTakenSeconds
             })
             .eq('id', examSession.id);
 
-        // Audit log (fire-and-forget)
-        auditLog(
-            participant.id,
-            null,
-            'TAB_SWITCH_VIOLATION',
-            `Tab switch violation #${newTabSwitchCount} (${violationType})`,
-            roundNumber,
-            req,
-            { violationType, count: newTabSwitchCount }
-        );
+        // Step C: Disqualify participant
+        await supabase
+            .from('participants')
+            .update({
+                is_disqualified: true,
+                disqualification_reason: `Auto-disqualified: ${newCount} tab switches (violation limit = 2)`
+            })
+            .eq('id', participant.id);
 
-        if (shouldAutoSubmit) {
-            // Auto-submit the exam with BULK answers
-            const startTime = new Date(examSession.started_at);
-            const timeTakenSeconds = Math.floor((now - startTime) / 1000);
+        auditLog(participant.id, null, 'TAB_SWITCH_DISQUALIFY',
+            `${newCount} tab switches — auto-submitted and disqualified`,
+            roundNumber, req);
 
-            await supabase
-                .from('exam_sessions')
-                .update({
-                    is_submitted: true,
-                    submitted_at: nowISO,
-                    submission_type: 'auto_violation',
-                    time_taken_seconds: timeTakenSeconds
-                })
-                .eq('id', examSession.id);
+        return res.json({
+            success: true,
+            data: {
+                warning: false,
+                autoSubmitted: true,
+                disqualified: true,
+                tabSwitchCount: newCount,
+                message: 'Disqualified due to tab switch violations'
+            }
+        });
 
-            // Respond immediately
-            res.json({
-                success: true,
-                data: {
-                    tabSwitchCount: newTabSwitchCount,
-                    warning: false,
-                    autoSubmitted: true
-                }
-            });
-
-            // Process bulk answers in background
-            setImmediate(async () => {
-                try {
-                    if (answers && answers.length > 0) {
-                        // Get all questions for this round
-                        const { data: questions } = await supabase
-                            .from('questions')
-                            .select('id, correct_option')
-                            .eq('round_number', roundNumber);
-
-                        const questionMap = {};
-                        if (questions) {
-                            questions.forEach(q => { questionMap[q.id] = q.correct_option; });
-                        }
-
-                        // Prepare bulk insert data
-                        const responsesToInsert = answers.map(ans => {
-                            const correctOption = questionMap[ans.question_id];
-                            const selectedOption = ans.selected_option?.toUpperCase() || null;
-                            const isCorrect = selectedOption && correctOption ? selectedOption === correctOption : null;
-
-                            return {
-                                participant_id: participant.id,
-                                question_id: ans.question_id,
-                                round_number: roundNumber,
-                                selected_option: selectedOption,
-                                is_correct: isCorrect,
-                                answered_at: nowISO
-                            };
-                        });
-
-                        // Bulk upsert
-                        await supabase
-                            .from('responses')
-                            .upsert(responsesToInsert, { onConflict: 'participant_id,question_id' });
-
-                        // Calculate score
-                        const { data: responses } = await supabase
-                            .from('responses')
-                            .select('is_correct')
-                            .eq('participant_id', participant.id)
-                            .eq('round_number', roundNumber);
-
-                        const correctAnswers = responses?.filter(r => r.is_correct === true).length || 0;
-
-                        await supabase
-                            .from('exam_sessions')
-                            .update({ correct_answers: correctAnswers })
-                            .eq('id', examSession.id);
-                    }
-
-                    auditLog(
-                        participant.id,
-                        null,
-                        'AUTO_SUBMIT_VIOLATION',
-                        `Exam auto-submitted due to tab switch violations`,
-                        roundNumber,
-                        req
-                    );
-                } catch (bgError) {
-                    console.error('Background violation submit error:', bgError);
-                }
-            });
-        } else {
-            res.json({
-                success: true,
-                data: {
-                    tabSwitchCount: newTabSwitchCount,
-                    warning: newTabSwitchCount === 1,
-                    autoSubmitted: false
-                }
-            });
-        }
     } catch (error) {
         console.error('Tab switch error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to record violation'
-        });
+        res.status(500).json({ success: false, message: 'Failed to process tab switch' });
     }
 });
 
-/**
- * POST /api/participant/logout
- * Participant logout (only when not in exam)
- */
+// ─────────────────────────────────────────────────────────────
+// POST /logout — Participant logout
+// ─────────────────────────────────────────────────────────────
 router.post('/logout', async (req, res) => {
     try {
-        if (req.session) {
-            req.session.destroy();
+        if (req.session?.participantId) {
+            auditLog(req.session.participantId, null, 'PARTICIPANT_LOGOUT',
+                'Participant logged out', null, req);
         }
-        res.json({
-            success: true,
-            message: 'Logged out successfully'
-        });
+
+        if (req.session?.destroy) {
+            req.session.destroy(() => { });
+        }
+
+        res.json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
         console.error('Logout error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Logout failed'
-        });
+        res.status(500).json({ success: false, message: 'Logout failed' });
     }
 });
 

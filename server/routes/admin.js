@@ -1,19 +1,25 @@
 /**
- * Admin Routes
- * Quiz Conquest - ECE Professional Online Exam Platform
- * Optimized for 100+ concurrent participants
+ * Admin Routes — Production-Grade CBT Engine
+ * Quiz Conquest v3.0
+ *
+ * DESIGN RULES:
+ *   • Round end calls finalize_round() (single atomic DB function)
+ *   • No race condition between timer-end and admin-end
+ *   • Disqualified participants excluded from ranking
+ *   • Top 25 qualification (not percentage)
+ *   • All admin actions audit-logged (fire-and-forget)
+ *   • Every mutation is idempotent
  */
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
-const { supabase, invalidateEventStateCache } = require('../config/database');
+const { supabase } = require('../config/database');
 const { requireAdmin, auditLog } = require('../middleware/auth');
 
-/**
- * POST /api/admin/login
- * Admin login with username and password
- */
+// ─────────────────────────────────────────────────────────────
+// POST /login — Admin login
+// ─────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -25,107 +31,78 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check against environment variables first (primary admin)
-        const envUsername = process.env.ADMIN_USERNAME;
-        const envPassword = process.env.ADMIN_PASSWORD;
+        const envUsername = (process.env.ADMIN_USERNAME || '').trim();
+        const envPassword = (process.env.ADMIN_PASSWORD || '').trim();
 
-        if (username === envUsername && password === envPassword) {
-            // Check if admin exists in DB, if not create
-            let adminId;
-            const { data: existingAdmin } = await supabase
-                .from('admins')
-                .select('id')
-                .eq('username', username)
-                .single();
-
-            if (existingAdmin) {
-                adminId = existingAdmin.id;
-                // Update last login
-                await supabase
-                    .from('admins')
-                    .update({ last_login: new Date().toISOString() })
-                    .eq('id', adminId);
-            } else {
-                // Create admin record
-                const passwordHash = await bcrypt.hash(password, 10);
-                const { data: newAdmin, error } = await supabase
-                    .from('admins')
-                    .insert({
-                        username: username,
-                        password_hash: passwordHash,
-                        last_login: new Date().toISOString()
-                    })
-                    .select('id')
-                    .single();
-
-                if (error) throw error;
-                adminId = newAdmin.id;
-            }
-
-            // Set session
-            req.session.adminId = adminId;
-            req.session.adminUsername = username;
-            req.session.isAdmin = true;
-
-            await auditLog(null, adminId, 'ADMIN_LOGIN', 'Admin logged in successfully', null, req);
-
-            return res.json({
-                success: true,
-                message: 'Login successful',
-                admin: { username }
-            });
+        if (username.trim() !== envUsername || password.trim() !== envPassword) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        // Check database for other admins - DISABLED
-        // Only the configured admin user can login
-        return res.status(401).json({
-            success: false,
-            message: 'Invalid credentials'
+        // Ensure admin record exists in DB
+        let adminId;
+        const { data: existingAdmin } = await supabase
+            .from('admins')
+            .select('id')
+            .eq('username', username.trim())
+            .single();
+
+        if (existingAdmin) {
+            adminId = existingAdmin.id;
+            await supabase
+                .from('admins')
+                .update({ last_login: new Date().toISOString() })
+                .eq('id', adminId);
+        } else {
+            const passwordHash = await bcrypt.hash(password, 10);
+            const { data: newAdmin, error } = await supabase
+                .from('admins')
+                .insert({
+                    username: username.trim(),
+                    password_hash: passwordHash,
+                    last_login: new Date().toISOString()
+                })
+                .select('id')
+                .single();
+            if (error) throw error;
+            adminId = newAdmin.id;
+        }
+
+        // Set session — this is the source of truth
+        req.session.adminId = adminId;
+        req.session.adminUsername = username.trim();
+        req.session.isAdmin = true;
+
+        auditLog(null, adminId, 'ADMIN_LOGIN', 'Admin logged in', null, req);
+
+        res.json({
+            success: true,
+            message: 'Login successful',
+            admin: { username: username.trim() }
         });
     } catch (error) {
         console.error('Admin login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Login failed'
-        });
+        res.status(500).json({ success: false, message: 'Login failed' });
     }
 });
 
-/**
- * POST /api/admin/logout
- * Admin logout
- */
-router.post('/logout', requireAdmin, async (req, res) => {
-    try {
-        await auditLog(null, req.admin.id, 'ADMIN_LOGOUT', 'Admin logged out', null, req);
-        req.session.destroy();
-        res.json({
-            success: true,
-            message: 'Logged out successfully'
-        });
-    } catch (error) {
-        console.error('Admin logout error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Logout failed'
-        });
-    }
+// ─────────────────────────────────────────────────────────────
+// POST /logout
+// ─────────────────────────────────────────────────────────────
+router.post('/logout', requireAdmin, (req, res) => {
+    auditLog(null, req.admin.id, 'ADMIN_LOGOUT', 'Admin logged out', null, req);
+    if (req.session?.destroy) req.session.destroy(() => { });
+    res.json({ success: true, message: 'Logged out successfully' });
 });
 
-/**
- * GET /api/admin/session
- * Check admin session status
- */
+// ─────────────────────────────────────────────────────────────
+// GET /session — Check admin session
+// ─────────────────────────────────────────────────────────────
 router.get('/session', async (req, res) => {
     try {
-        if (!req.session || !req.session.adminId) {
-            return res.json({
-                success: true,
-                authenticated: false
-            });
+        if (!req.session?.adminId) {
+            return res.json({ success: true, authenticated: false });
         }
 
-        // Verify admin still exists
         const { data: admin, error } = await supabase
             .from('admins')
             .select('id, username')
@@ -133,11 +110,8 @@ router.get('/session', async (req, res) => {
             .single();
 
         if (error || !admin) {
-            req.session.destroy();
-            return res.json({
-                success: true,
-                authenticated: false
-            });
+            if (req.session?.destroy) req.session.destroy(() => { });
+            return res.json({ success: true, authenticated: false });
         }
 
         res.json({
@@ -147,29 +121,22 @@ router.get('/session', async (req, res) => {
         });
     } catch (error) {
         console.error('Session check error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Session check failed'
-        });
+        res.status(500).json({ success: false, message: 'Session check failed' });
     }
 });
 
-/**
- * GET /api/admin/dashboard
- * Get dashboard data
- */
+// ─────────────────────────────────────────────────────────────
+// GET /dashboard — Dashboard data
+// ─────────────────────────────────────────────────────────────
 router.get('/dashboard', requireAdmin, async (req, res) => {
     try {
-        // Get event state
         const { data: eventState, error: eventError } = await supabase
             .from('event_state')
             .select('*')
             .eq('id', 1)
             .single();
-
         if (eventError) throw eventError;
 
-        // Get participant counts
         const { count: totalParticipants } = await supabase
             .from('participants')
             .select('*', { count: 'exact', head: true })
@@ -182,7 +149,11 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             .eq('is_qualified', true)
             .eq('is_disqualified', false);
 
-        // Get question counts per round
+        const { count: disqualifiedCount } = await supabase
+            .from('participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_disqualified', true);
+
         const { data: questionCounts } = await supabase
             .from('questions')
             .select('round_number');
@@ -193,13 +164,11 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             3: questionCounts?.filter(q => q.round_number === 3).length || 0
         };
 
-        // Get rounds data
         const { data: rounds } = await supabase
             .from('rounds')
             .select('*')
             .order('round_number');
 
-        // Get submitted count for current round
         let submittedCount = 0;
         if (eventState.current_round > 0) {
             const { count } = await supabase
@@ -223,6 +192,7 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
                 participants: {
                     total: totalParticipants || 0,
                     qualified: qualifiedParticipants || 0,
+                    disqualified: disqualifiedCount || 0,
                     submittedCurrentRound: submittedCount
                 },
                 questionsPerRound,
@@ -231,63 +201,40 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         });
     } catch (error) {
         console.error('Dashboard error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch dashboard data'
-        });
+        res.status(500).json({ success: false, message: 'Failed to fetch dashboard data' });
     }
 });
 
-/**
- * POST /api/admin/event/activate
- * Activate the event
- */
+// ─────────────────────────────────────────────────────────────
+// POST /event/activate — Activate event
+// ─────────────────────────────────────────────────────────────
 router.post('/event/activate', requireAdmin, async (req, res) => {
     try {
         const { error } = await supabase
             .from('event_state')
-            .update({
-                event_active: true,
-                updated_at: new Date().toISOString()
-            })
+            .update({ event_active: true, updated_at: new Date().toISOString() })
             .eq('id', 1);
-
         if (error) throw error;
 
-        // Invalidate cache so participants see the change immediately
-        invalidateEventStateCache();
-
-        await auditLog(null, req.admin.id, 'EVENT_ACTIVATED', 'Event has been activated', null, req);
-
-        res.json({
-            success: true,
-            message: 'Event activated successfully'
-        });
+        auditLog(null, req.admin.id, 'EVENT_ACTIVATED', 'Event activated', null, req);
+        res.json({ success: true, message: 'Event activated successfully' });
     } catch (error) {
         console.error('Event activation error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to activate event'
-        });
+        res.status(500).json({ success: false, message: 'Failed to activate event' });
     }
 });
 
-/**
- * POST /api/admin/round/start
- * Start a round
- */
+// ─────────────────────────────────────────────────────────────
+// POST /round/start — Start a round
+// ─────────────────────────────────────────────────────────────
 router.post('/round/start', requireAdmin, async (req, res) => {
     try {
         const { roundNumber } = req.body;
 
         if (!roundNumber || roundNumber < 1 || roundNumber > 3) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid round number'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid round number' });
         }
 
-        // Check if event is active
         const { data: eventState } = await supabase
             .from('event_state')
             .select('*')
@@ -295,21 +242,18 @@ router.post('/round/start', requireAdmin, async (req, res) => {
             .single();
 
         if (!eventState.event_active) {
-            return res.status(400).json({
-                success: false,
-                message: 'Event must be activated first'
-            });
+            return res.status(400).json({ success: false, message: 'Event must be activated first' });
         }
 
-        // Check if previous rounds are completed
+        // Verify previous rounds completed
         if (roundNumber > 1) {
-            const { data: previousRound } = await supabase
+            const { data: prevRound } = await supabase
                 .from('rounds')
                 .select('*')
                 .eq('round_number', roundNumber - 1)
                 .single();
 
-            if (previousRound.status !== 'completed' || !previousRound.shortlisting_completed) {
+            if (!prevRound || prevRound.status !== 'completed' || !prevRound.shortlisting_completed) {
                 return res.status(400).json({
                     success: false,
                     message: `Round ${roundNumber - 1} must be completed and shortlisted first`
@@ -317,7 +261,7 @@ router.post('/round/start', requireAdmin, async (req, res) => {
             }
         }
 
-        // Check if 15 questions exist for this round
+        // Verify 15 questions exist
         const { count: questionCount } = await supabase
             .from('questions')
             .select('*', { count: 'exact', head: true })
@@ -326,11 +270,10 @@ router.post('/round/start', requireAdmin, async (req, res) => {
         if (questionCount < 15) {
             return res.status(400).json({
                 success: false,
-                message: `Round ${roundNumber} requires exactly 15 questions. Currently has ${questionCount}.`
+                message: `Round ${roundNumber} requires 15 questions. Currently has ${questionCount}.`
             });
         }
 
-        // Get round duration
         const { data: round } = await supabase
             .from('rounds')
             .select('duration_minutes')
@@ -351,24 +294,17 @@ router.post('/round/start', requireAdmin, async (req, res) => {
                 updated_at: now.toISOString()
             })
             .eq('id', 1);
-
         if (eventError) throw eventError;
 
         // Update round status
         const { error: roundError } = await supabase
             .from('rounds')
-            .update({
-                status: 'active',
-                started_at: now.toISOString()
-            })
+            .update({ status: 'active', started_at: now.toISOString() })
             .eq('round_number', roundNumber);
-
         if (roundError) throw roundError;
 
-        // Invalidate cache so changes propagate immediately
-        invalidateEventStateCache();
-
-        await auditLog(null, req.admin.id, 'ROUND_STARTED', `Round ${roundNumber} has been started`, roundNumber, req);
+        auditLog(null, req.admin.id, 'ROUND_STARTED',
+            `Round ${roundNumber} started (${round.duration_minutes} min)`, roundNumber, req);
 
         res.json({
             success: true,
@@ -382,92 +318,91 @@ router.post('/round/start', requireAdmin, async (req, res) => {
         });
     } catch (error) {
         console.error('Round start error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to start round'
-        });
+        res.status(500).json({ success: false, message: 'Failed to start round' });
     }
 });
 
-/**
- * POST /api/admin/round/end
- * End current round (OPTIMIZED for 100+ participants)
- */
+// ─────────────────────────────────────────────────────────────
+// POST /round/end — END ROUND (CRITICAL)
+//
+// Calls the SINGLE ATOMIC finalize_round() database function.
+// This handles:
+//   1. Idempotent guard (prevents double execution)
+//   2. Auto-submit all pending sessions
+//   3. Calculate scores (responses × questions comparison)
+//   4. Generate rankings (exclude disqualified)
+//   5. Shortlist Top 25
+//   6. Update participants
+//   7. Mark round completed
+//
+// Safe against race conditions — if admin clicks twice, or
+// both timer-end and admin-end fire simultaneously, only
+// the first call executes; the second is a no-op.
+// ─────────────────────────────────────────────────────────────
 router.post('/round/end', requireAdmin, async (req, res) => {
     try {
-        // Get current event state
+        // Get current round number
         const { data: eventState } = await supabase
             .from('event_state')
-            .select('current_round, round_status, round_started_at')
+            .select('current_round, round_status')
             .eq('id', 1)
             .single();
 
-        if (eventState.round_status !== 'running') {
-            return res.status(400).json({
-                success: false,
-                message: 'No round is currently running'
-            });
+        if (!eventState || eventState.current_round === 0) {
+            return res.status(400).json({ success: false, message: 'No round to end' });
         }
 
         const roundNumber = eventState.current_round;
-        const now = new Date();
-        const nowISO = now.toISOString();
 
-        // Batch auto-submit ALL pending exams at once (much faster than loop)
-        const { data: updateResult, error: batchError } = await supabase
-            .from('exam_sessions')
-            .update({
-                is_submitted: true,
-                submitted_at: nowISO,
-                submission_type: 'auto_admin_end'
-            })
-            .eq('round_number', roundNumber)
-            .eq('is_submitted', false)
-            .select('id');
+        // ── CALL ATOMIC finalize_round() ──────────────────────
+        const { data: result, error } = await supabase.rpc('finalize_round', {
+            p_round_number: roundNumber
+        });
 
-        if (batchError) throw batchError;
-        const autoSubmittedCount = updateResult?.length || 0;
+        if (error) {
+            console.error('finalize_round RPC error:', error);
+            throw error;
+        }
 
-        // Run state updates in parallel
-        await Promise.all([
-            // Update event state
-            supabase.from('event_state')
-                .update({ round_status: 'completed', updated_at: nowISO })
-                .eq('id', 1),
-            // Update round status
-            supabase.from('rounds')
-                .update({ status: 'completed', ended_at: nowISO })
-                .eq('round_number', roundNumber),
-            // Single audit log for batch operation
-            auditLog(null, req.admin.id, 'ROUND_ENDED',
-                `Round ${roundNumber} ended. Auto-submitted ${autoSubmittedCount} exams.`,
-                roundNumber, req, { autoSubmittedCount })
-        ]);
+        // Handle idempotent case
+        if (result?.already_completed) {
+            return res.json({
+                success: true,
+                message: `Round ${roundNumber} was already finalized`,
+                alreadyCompleted: true,
+                data: result
+            });
+        }
 
-        // Invalidate cache after state changes
-        invalidateEventStateCache();
+        auditLog(null, req.admin.id, 'ROUND_ENDED',
+            `Round ${roundNumber} finalized — ` +
+            `${result.auto_submitted} auto-submitted, ` +
+            `${result.total_scored} scored, ` +
+            `${result.qualified_count}/${result.total_eligible} qualified`,
+            roundNumber, req, result);
 
         res.json({
             success: true,
             message: `Round ${roundNumber} ended successfully`,
-            autoSubmitted: autoSubmittedCount
+            data: result
         });
     } catch (error) {
         console.error('Round end error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to end round'
-        });
+        res.status(500).json({ success: false, message: 'Failed to end round' });
     }
 });
 
-/**
- * POST /api/admin/round/shortlist
- * Perform shortlisting for a completed round
- */
+// ─────────────────────────────────────────────────────────────
+// POST /round/shortlist — Manual re-shortlist
+// For admin override (re-run shortlisting after manual changes)
+// ─────────────────────────────────────────────────────────────
 router.post('/round/shortlist', requireAdmin, async (req, res) => {
     try {
-        const { roundNumber } = req.body;
+        const { roundNumber, topCount } = req.body;
+
+        if (!roundNumber) {
+            return res.status(400).json({ success: false, message: 'Round number required' });
+        }
 
         // Verify round is completed
         const { data: round } = await supabase
@@ -483,42 +418,29 @@ router.post('/round/shortlist', requireAdmin, async (req, res) => {
             });
         }
 
-        if (round.shortlisting_completed) {
-            return res.status(400).json({
-                success: false,
-                message: 'Shortlisting already completed for this round'
-            });
-        }
-
-        // Calculate scores first
-        const { error: scoreError } = await supabase.rpc('calculate_round_scores', {
+        // Recalculate scores first
+        const { error: scoreErr } = await supabase.rpc('calculate_round_scores', {
             p_round_number: roundNumber
         });
+        if (scoreErr) throw scoreErr;
 
-        if (scoreError) {
-            console.error('Score calculation error:', scoreError);
-            throw scoreError;
-        }
-
-        // Perform shortlisting
-        const { data: result, error: shortlistError } = await supabase.rpc('perform_shortlisting', {
+        // Regenerate rankings
+        const { error: rankErr } = await supabase.rpc('generate_rankings', {
             p_round_number: roundNumber
         });
+        if (rankErr) throw rankErr;
 
-        if (shortlistError) {
-            console.error('Shortlisting error:', shortlistError);
-            throw shortlistError;
-        }
+        // Perform shortlisting with custom topCount
+        const finalTopCount = topCount || 25;
+        const { data: result, error: shortlistErr } = await supabase.rpc('perform_shortlisting', {
+            p_round_number: roundNumber,
+            p_top_count: finalTopCount
+        });
+        if (shortlistErr) throw shortlistErr;
 
-        await auditLog(
-            null,
-            req.admin.id,
-            'SHORTLISTING_COMPLETED',
-            `Round ${roundNumber} shortlisting completed`,
-            roundNumber,
-            req,
-            result
-        );
+        auditLog(null, req.admin.id, 'SHORTLISTING_COMPLETED',
+            `Round ${roundNumber} shortlisting — Top ${finalTopCount}`,
+            roundNumber, req, result);
 
         res.json({
             success: true,
@@ -527,47 +449,36 @@ router.post('/round/shortlist', requireAdmin, async (req, res) => {
         });
     } catch (error) {
         console.error('Shortlisting error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to perform shortlisting'
-        });
+        res.status(500).json({ success: false, message: 'Failed to perform shortlisting' });
     }
 });
 
-/**
- * GET /api/admin/results/:roundNumber
- * Get results for a round
- */
+// ─────────────────────────────────────────────────────────────
+// GET /results/:roundNumber — Get results
+// ─────────────────────────────────────────────────────────────
 router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
     try {
         const roundNumber = parseInt(req.params.roundNumber);
 
-        // Get scores with participant details
         const { data: results, error } = await supabase
             .from('scores')
             .select(`
                 *,
                 participants:participant_id (
-                    system_id,
-                    name,
-                    college_name,
-                    phone_number
+                    system_id, name, college_name, phone_number,
+                    is_disqualified, disqualification_reason
                 )
             `)
             .eq('round_number', roundNumber)
-            .order('rank');
+            .order('rank', { ascending: true, nullsFirst: false });
 
         if (error) throw error;
 
-        // Get audit logs for this round
         const { data: auditLogs } = await supabase
             .from('audit_logs')
             .select(`
                 *,
-                participants:participant_id (
-                    system_id,
-                    name
-                )
+                participants:participant_id (system_id, name)
             `)
             .eq('round_number', roundNumber)
             .order('created_at', { ascending: false });
@@ -581,140 +492,173 @@ router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
         });
     } catch (error) {
         console.error('Results fetch error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch results'
-        });
+        res.status(500).json({ success: false, message: 'Failed to fetch results' });
     }
 });
 
-/**
- * GET /api/admin/participants
- * Get all participants
- */
+// ─────────────────────────────────────────────────────────────
+// GET /participants — Get all participants
+// ─────────────────────────────────────────────────────────────
 router.get('/participants', requireAdmin, async (req, res) => {
     try {
         const { data: participants, error } = await supabase
             .from('participants')
             .select('*')
             .order('created_at', { ascending: false });
-
         if (error) throw error;
-
-        res.json({
-            success: true,
-            data: participants || []
-        });
+        res.json({ success: true, data: participants || [] });
     } catch (error) {
         console.error('Participants fetch error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch participants'
-        });
+        res.status(500).json({ success: false, message: 'Failed to fetch participants' });
     }
 });
 
-/**
- * GET /api/admin/audit-logs
- * Get all audit logs
- */
+// ─────────────────────────────────────────────────────────────
+// POST /participant/disqualify — Admin disqualification override
+// ─────────────────────────────────────────────────────────────
+router.post('/participant/disqualify', requireAdmin, async (req, res) => {
+    try {
+        const { participantId, reason } = req.body;
+
+        if (!participantId) {
+            return res.status(400).json({ success: false, message: 'Participant ID required' });
+        }
+
+        const { error } = await supabase
+            .from('participants')
+            .update({
+                is_disqualified: true,
+                disqualification_reason: reason || 'Admin manual disqualification'
+            })
+            .eq('id', participantId);
+
+        if (error) throw error;
+
+        auditLog(participantId, req.admin.id, 'ADMIN_DISQUALIFY',
+            `Admin disqualified: ${reason || 'No reason given'}`, null, req);
+
+        res.json({ success: true, message: 'Participant disqualified' });
+    } catch (error) {
+        console.error('Disqualify error:', error);
+        res.status(500).json({ success: false, message: 'Failed to disqualify participant' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /participant/reinstate — Admin reinstatement override
+// ─────────────────────────────────────────────────────────────
+router.post('/participant/reinstate', requireAdmin, async (req, res) => {
+    try {
+        const { participantId } = req.body;
+
+        if (!participantId) {
+            return res.status(400).json({ success: false, message: 'Participant ID required' });
+        }
+
+        const { error } = await supabase
+            .from('participants')
+            .update({
+                is_disqualified: false,
+                disqualification_reason: null,
+                is_qualified: true
+            })
+            .eq('id', participantId);
+
+        if (error) throw error;
+
+        auditLog(participantId, req.admin.id, 'ADMIN_REINSTATE',
+            'Admin reinstated participant', null, req);
+
+        res.json({ success: true, message: 'Participant reinstated' });
+    } catch (error) {
+        console.error('Reinstate error:', error);
+        res.status(500).json({ success: false, message: 'Failed to reinstate participant' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /audit-logs — Get audit logs
+// ─────────────────────────────────────────────────────────────
 router.get('/audit-logs', requireAdmin, async (req, res) => {
     try {
         const { data: logs, error } = await supabase
             .from('audit_logs')
             .select(`
                 *,
-                participants:participant_id (
-                    system_id,
-                    name
-                )
+                participants:participant_id (system_id, name)
             `)
             .order('created_at', { ascending: false })
             .limit(500);
-
         if (error) throw error;
-
-        res.json({
-            success: true,
-            data: logs || []
-        });
+        res.json({ success: true, data: logs || [] });
     } catch (error) {
-        console.error('Audit logs fetch error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch audit logs'
-        });
+        console.error('Audit logs error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch audit logs' });
     }
 });
 
-/**
- * GET /api/admin/export/:roundNumber
- * Export results as CSV
- */
+// ─────────────────────────────────────────────────────────────
+// GET /export/:roundNumber — Export results as CSV
+// ─────────────────────────────────────────────────────────────
 router.get('/export/:roundNumber', requireAdmin, async (req, res) => {
     try {
         const roundNumber = parseInt(req.params.roundNumber);
 
-        // Check if any round is currently running
         const { data: eventState } = await supabase
             .from('event_state')
             .select('round_status')
             .eq('id', 1)
             .single();
 
-        if (eventState.round_status === 'running') {
+        if (eventState?.round_status === 'running') {
             return res.status(400).json({
                 success: false,
                 message: 'Cannot export while a round is running'
             });
         }
 
-        // Get results with participant details
         const { data: results, error } = await supabase
             .from('scores')
             .select(`
                 *,
                 participants:participant_id (
-                    system_id,
-                    name,
-                    college_name,
-                    phone_number
+                    system_id, name, college_name, phone_number,
+                    is_disqualified
                 )
             `)
             .eq('round_number', roundNumber)
-            .order('rank');
+            .order('rank', { ascending: true, nullsFirst: false });
 
         if (error) throw error;
 
-        // Get exam session data for violation info
         const { data: sessions } = await supabase
             .from('exam_sessions')
             .select('participant_id, tab_switch_count, submission_type')
             .eq('round_number', roundNumber);
 
         const sessionMap = {};
-        sessions?.forEach(s => {
-            sessionMap[s.participant_id] = s;
-        });
+        sessions?.forEach(s => { sessionMap[s.participant_id] = s; });
 
-        // Generate CSV
         const csvRows = [
-            ['Rank', 'System ID', 'Name', 'College', 'Phone', 'Score', 'Time (seconds)', 'Tab Switches', 'Submission Type', 'Qualified']
+            ['Rank', 'System ID', 'Name', 'College', 'Phone', 'Score',
+                'Time (sec)', 'Tab Switches', 'Submission Type', 'Qualified',
+                'Disqualified']
         ];
 
         results?.forEach(r => {
-            const session = sessionMap[r.participant_id] || {};
+            const sess = sessionMap[r.participant_id] || {};
             csvRows.push([
-                r.rank,
+                r.rank || 'DQ',
                 r.participants?.system_id || '',
                 r.participants?.name || '',
                 r.participants?.college_name || '',
                 r.participants?.phone_number || '',
                 r.correct_answers,
                 r.time_taken_seconds || '',
-                session.tab_switch_count || 0,
-                session.submission_type || '',
-                r.qualified_for_next ? 'Yes' : 'No'
+                sess.tab_switch_count || 0,
+                sess.submission_type || '',
+                r.qualified_for_next ? 'Yes' : 'No',
+                r.participants?.is_disqualified ? 'Yes' : 'No'
             ]);
         });
 
@@ -722,44 +666,67 @@ router.get('/export/:roundNumber', requireAdmin, async (req, res) => {
             row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
         ).join('\n');
 
-        await auditLog(null, req.admin.id, 'RESULTS_EXPORTED', `Round ${roundNumber} results exported`, roundNumber, req);
+        auditLog(null, req.admin.id, 'RESULTS_EXPORTED',
+            `Round ${roundNumber} results exported`, roundNumber, req);
 
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="round_${roundNumber}_results.csv"`);
+        res.setHeader('Content-Disposition',
+            `attachment; filename="round_${roundNumber}_results.csv"`);
         res.send(csvContent);
     } catch (error) {
         console.error('Export error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to export results'
-        });
+        res.status(500).json({ success: false, message: 'Failed to export results' });
     }
 });
 
-/**
- * POST /api/admin/reset-event
- * Reset entire event (USE WITH CAUTION)
- */
-// Reset entire event (USE WITH CAUTION)
-router.post('/reset-event', requireAdmin, async (req, res) => {
+// ─────────────────────────────────────────────────────────────
+// POST /round/update — Update round settings
+// ─────────────────────────────────────────────────────────────
+router.post('/round/update', requireAdmin, async (req, res) => {
     try {
-        const { confirmReset, keepQuestions } = req.body;
+        const { roundNumber, durationMinutes } = req.body;
 
-        if (confirmReset !== 'RESET_ALL_DATA') {
+        if (!roundNumber || !durationMinutes) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid confirmation code'
+                message: 'Round number and duration are required'
             });
         }
 
-        // Reset in order due to foreign keys
+        const { error } = await supabase
+            .from('rounds')
+            .update({ duration_minutes: parseInt(durationMinutes) })
+            .eq('round_number', roundNumber);
+        if (error) throw error;
+
+        auditLog(null, req.admin.id, 'ROUND_UPDATED',
+            `Round ${roundNumber} duration set to ${durationMinutes} min`, roundNumber, req);
+
+        res.json({ success: true, message: 'Round settings updated' });
+    } catch (error) {
+        console.error('Update round error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update round settings' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /reset-event — Reset entire event (DANGEROUS)
+// ─────────────────────────────────────────────────────────────
+router.post('/reset-event', requireAdmin, async (req, res) => {
+    try {
+        const { confirmReset, preserveQuestions } = req.body;
+
+        if (confirmReset !== 'RESET_ALL_DATA') {
+            return res.status(400).json({ success: false, message: 'Invalid confirmation code' });
+        }
+
+        // Delete in FK order
         await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('responses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         await supabase.from('exam_sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-        // Only delete questions if explicitly requested (default is to keep them)
-        if (!keepQuestions) {
+        if (!preserveQuestions) {
             await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         }
 
@@ -789,91 +756,10 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
             })
             .eq('id', 1);
 
-        res.json({
-            success: true,
-            message: 'Event reset successfully'
-        });
+        res.json({ success: true, message: 'Event reset successfully' });
     } catch (error) {
         console.error('Reset error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to reset event'
-        });
-    }
-});
-
-/**
- * GET /api/admin/malpractice-logs
- * Get recent malpractice events (tab switches)
- */
-router.get('/malpractice-logs', requireAdmin, async (req, res) => {
-    try {
-        const { data: logs, error } = await supabase
-            .from('audit_logs')
-            .select(`
-                *,
-                participants:participant_id (
-                    system_id,
-                    name,
-                    college_name
-                )
-            `)
-            .in('action', ['TAB_SWITCH_WARNING', 'AUTO_SUBMIT_VIOLATION'])
-            .order('created_at', { ascending: false })
-            .limit(50);
-
-        if (error) throw error;
-
-        res.json({
-            success: true,
-            data: logs || []
-        });
-    } catch (error) {
-        console.error('Malpractice logs fetch error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch malpractice logs'
-        });
-    }
-});
-
-/**
- * POST /api/admin/round/update
- * Update round settings (duration)
- */
-router.post('/round/update', requireAdmin, async (req, res) => {
-    try {
-        const { roundNumber, durationMinutes } = req.body;
-        console.log('Update round request:', { roundNumber, durationMinutes });
-
-        if (!roundNumber || !durationMinutes) {
-            return res.status(400).json({
-                success: false,
-                message: 'Round number and duration are required'
-            });
-        }
-
-        const { error } = await supabase
-            .from('rounds')
-            .update({
-                duration_minutes: parseInt(durationMinutes)
-            })
-            .eq('round_number', roundNumber);
-
-        if (error) throw error;
-
-        await auditLog(null, req.admin.id, 'ROUND_UPDATED', `Round ${roundNumber} settings updated`, { durationMinutes }, req);
-
-        res.json({
-            success: true,
-            message: 'Round settings updated successfully'
-        });
-    } catch (error) {
-        console.error('Update round error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to update round settings'
-        });
+        res.status(500).json({ success: false, message: 'Failed to reset event' });
     }
 });
 

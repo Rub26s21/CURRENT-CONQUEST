@@ -1001,16 +1001,18 @@
                 }
             }
 
-            // Handle tab switch/visibility change
+            // Handle tab switch/visibility change (STRICT CBT)
+            // 1st switch → warning (logged)
+            // 2nd switch → auto-submit + disqualify (permanent)
             async function handleVisibilityChange() {
-                if (document.hidden && screens.exam.classList.contains('active')) {
+                if (document.hidden && screens.exam.classList.contains('active') && !state.isSubmitting) {
                     // Save current answer to state before reporting
                     if (state.currentQuestion?.questionId && state.selectedOption) {
                         state.answers[state.currentQuestion.questionId] = state.selectedOption;
                     }
 
-                    // Tab switch during exam - send answers in case of auto-submit
                     try {
+                        // Always send answers (backend saves them on 2nd violation)
                         const answersArray = Object.entries(state.answers).map(([questionId, selectedOption]) => ({
                             question_id: questionId,
                             selected_option: selectedOption
@@ -1020,25 +1022,28 @@
                             method: 'POST',
                             body: JSON.stringify({
                                 violationType: 'visibility_change',
-                                answers: answersArray  // Send answers for potential auto-submit
+                                answers: answersArray
                             })
                         });
 
-                        if (result.success) {
-                            state.tabSwitchCount = result.data.tabSwitchCount;
+                        if (result.success && result.data) {
+                            state.tabSwitchCount = result.data.tabSwitchCount || 0;
 
-                            if (result.data.autoSubmitted) {
-                                // Exam was auto-submitted
+                            if (result.data.autoSubmitted && result.data.disqualified) {
+                                // ── 2ND SWITCH: DISQUALIFIED ──────────
                                 clearInterval(state.timerInterval);
-                                showScreen('completion');
-                                elements.completionMessage.textContent =
-                                    'Due to multiple tab switch violations, your exam has been automatically submitted.';
-                                elements.submissionTime.textContent = new Date().toLocaleTimeString();
+                                stopStatusPolling();
+                                elements.disqualificationReason.textContent =
+                                    'You have been disqualified for switching tabs/windows. ' +
+                                    'Your exam was auto-submitted. This decision is final unless overridden by an administrator.';
+                                showScreen('disqualified');
                             } else if (result.data.warning) {
-                                // Show warning
+                                // ── 1ST SWITCH: WARNING ───────────────
                                 elements.warningText.textContent =
-                                    'You switched tabs or windows. This is your first warning. Another violation will result in automatic submission.';
-                                elements.warningCount.textContent = `Violations: ${state.tabSwitchCount}/2`;
+                                    '⚠️ CRITICAL WARNING: You switched tabs or windows during the exam. ' +
+                                    'This is your FIRST and ONLY warning. ' +
+                                    'If you switch again, your exam will be auto-submitted and you will be DISQUALIFIED.';
+                                elements.warningCount.textContent = `Violations: ${state.tabSwitchCount} / 2 (next = disqualification)`;
                                 elements.warningOverlay.classList.remove('hidden');
                             }
                         }
@@ -1093,7 +1098,6 @@
                 });
             }
 
-            init();
             init();
         })();
     </script>

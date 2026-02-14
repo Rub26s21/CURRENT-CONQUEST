@@ -336,7 +336,7 @@ router.post('/questions', requireAdmin, upload.single('file'), async (req, res) 
 
         if (error) throw error;
 
-        await auditLog(
+        auditLog(
             null,
             req.admin.id,
             'QUESTIONS_FILE_UPLOADED',

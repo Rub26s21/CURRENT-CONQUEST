@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS exam_sessions (
     started_at TIMESTAMPTZ DEFAULT NOW(),
     submitted_at TIMESTAMPTZ,
     is_submitted BOOLEAN DEFAULT FALSE,
-    submission_type VARCHAR(20) CHECK (submission_type IN ('manual', 'auto_timer', 'auto_violation')),
+    submission_type VARCHAR(20) CHECK (submission_type IN ('manual', 'auto_timer', 'auto_violation', 'auto_round_end')),
     tab_switch_count INTEGER DEFAULT 0,
     time_taken_seconds INTEGER,
     UNIQUE(participant_id, round_number)

@@ -92,7 +92,7 @@ router.post('/add', requireAdmin, async (req, res) => {
 
             if (error) throw error;
 
-            await auditLog(
+            auditLog(
                 null,
                 req.admin.id,
                 'QUESTION_UPDATED',
@@ -123,7 +123,7 @@ router.post('/add', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
-        await auditLog(
+        auditLog(
             null,
             req.admin.id,
             'QUESTION_ADDED',
@@ -224,7 +224,7 @@ router.delete('/:questionId', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
-        await auditLog(
+        auditLog(
             null,
             req.admin.id,
             'QUESTION_DELETED',
@@ -323,7 +323,7 @@ router.post('/bulk-add', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
-        await auditLog(
+        auditLog(
             null,
             req.admin.id,
             'QUESTIONS_BULK_ADDED',

@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "adm-zip": "^0.5.16",
+    "axios": "^1.13.5",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "docx": "^9.5.1",
