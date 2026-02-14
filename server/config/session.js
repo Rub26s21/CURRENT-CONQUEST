@@ -3,6 +3,8 @@
  * Quiz Conquest - ECE Professional Online Exam Platform
  * 
  * FIXED: Cookie config for cross-origin Vercel deployment
+ * - sameSite: 'none' + secure: true for HTTPS cross-origin
+ * - trust proxy must be set on the Express app
  */
 
 const session = require('express-session');
@@ -15,10 +17,10 @@ const sessionConfig = {
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: isProduction,
+        secure: isProduction,           // true on HTTPS (Vercel)
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: isProduction ? 'none' : 'lax'
+        maxAge: 24 * 60 * 60 * 1000,   // 24 hours
+        sameSite: isProduction ? 'none' : 'lax'  // 'none' for cross-origin on Vercel
     },
     name: 'qc.session'
 };
