@@ -690,10 +690,12 @@
                             <span class="badge badge-neutral" id="eventStatusBadge">Not Started</span>
                         </div>
                         <div style="display: flex; gap: var(--space-md);">
-                            <button class="btn btn-success btn-sm" id="activateEventBtn" style="display: none;">
+                            <button class="btn btn-success btn-sm" id="activateEventBtn" style="display: none;"
+                                onclick="activateEvent()">
                                 🚀 Activate Event
                             </button>
-                            <button class="btn btn-warning btn-sm" id="pauseEventBtn" style="display: none;">
+                            <button class="btn btn-warning btn-sm" id="pauseEventBtn" style="display: none;"
+                                onclick="pauseEvent()">
                                 ⏸️ Pause Event
                             </button>
                             <button class="btn btn-danger btn-sm" id="dashboardResetBtn" title="Reset Entire Event">
@@ -1327,23 +1329,25 @@
                 const statusText = document.getElementById('eventStatusText');
                 const statusBadge = document.getElementById('eventStatusBadge');
                 const activateContainer = document.getElementById('activateEventContainer');
-                const activateBtn = document.getElementById('activateEventBtn');
 
-                if (!data.eventState.eventActive) {
+                const activateBtn = document.getElementById('activateEventBtn');
+                const pauseBtn = document.getElementById('pauseEventBtn');
+                const isActive = data.eventState.eventActive;
+
+                // Toggle Buttons based on active state
+                if (activateBtn) activateBtn.style.display = isActive ? 'none' : 'inline-flex';
+                if (pauseBtn) pauseBtn.style.display = isActive ? 'inline-flex' : 'none';
+                if (activateContainer) activateContainer.style.display = isActive ? 'none' : 'block';
+
+                // Update Status Indicators
+                if (!isActive) {
                     if (statusDot) statusDot.className = 'status-dot inactive';
                     if (statusText) statusText.textContent = 'Event Not Active';
                     if (statusBadge) {
                         statusBadge.textContent = 'Not Active';
                         statusBadge.className = 'badge badge-warning';
                     }
-                    if (activateContainer) activateContainer.style.display = 'block';
-                    if (activateBtn) activateBtn.style.display = 'inline-flex';
-                    if (document.getElementById('pauseEventBtn')) document.getElementById('pauseEventBtn').style.display = 'none';
                 } else {
-                    if (activateContainer) activateContainer.style.display = 'none';
-                    if (activateBtn) activateBtn.style.display = 'none';
-                    if (document.getElementById('pauseEventBtn')) document.getElementById('pauseEventBtn').style.display = 'inline-flex';
-
                     if (data.eventState.roundStatus === 'running') {
                         if (statusDot) statusDot.className = 'status-dot running';
                         if (statusText) statusText.textContent = `Round ${data.eventState.currentRound} Running`;
@@ -1422,18 +1426,8 @@
                 }
             }
 
-            // Bind Event Listeners
-            document.addEventListener('click', function (e) {
-                if (e.target && e.target.id === 'activateEventBtn') {
-                    activateEvent();
-                }
-                if (e.target && e.target.id === 'pauseEventBtn') {
-                    pauseEvent();
-                }
-            });
-
-            // Activate event
-            async function activateEvent() {
+            // Expose to window for onclick
+            window.activateEvent = async function () {
                 const confirmed = await showConfirm(
                     'Activate Event',
                     'This will allow participants to login. Are you sure?',
@@ -1454,10 +1448,9 @@
                     console.error('Activate event error:', error);
                     alert('Failed to activate event');
                 }
-            }
+            };
 
-            // Pause event
-            async function pauseEvent() {
+            window.pauseEvent = async function () {
                 const confirmed = await showConfirm(
                     'Pause Event',
                     'This will prevent participants from accessing the exam. You can resume it later. Continue?',
@@ -1478,7 +1471,7 @@
                     console.error('Pause event error:', error);
                     alert('Failed to pause event');
                 }
-            }
+            };
 
             // Reset Round
             window.resetRound = async function (roundNumber) {
