@@ -569,37 +569,59 @@ router.get('/submissions/:roundNumber', requireAdmin, async (req, res) => {
 // GET /audit-logs — Get audit logs
 // ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
-// GET /participants — Get participants (V4: from submissions)
-// Maps submissions to participant-like structure for frontend compatibility
+// GET /participants — Get all submissions with results (V4)
+// Returns submission data enriched with evaluation results
 // ─────────────────────────────────────────────────────────────
 router.get('/participants', requireAdmin, async (req, res) => {
     try {
-        // Get all unique submissions
-        // In V4, we don't have persistent participants, so we show recent submissions
-        const { data: submissions, error } = await supabase
+        // Get all submissions
+        const { data: submissions, error: subErr } = await supabase
             .from('submissions')
             .select('*')
             .order('submitted_at', { ascending: false })
-            .limit(100);
+            .limit(500);
 
-        if (error) throw error;
+        if (subErr) throw subErr;
 
-        // Map to frontend expected format
-        const participants = submissions.map(s => ({
-            id: s.id,
-            system_id: s.attempt_token, // Use token as ID
-            name: 'Anonymous Candidate', // V4: No personal data
-            college_name: 'Hidden',
-            phone_number: '-',
-            current_round: s.round_number,
-            is_qualified: false, // Calculated in results
-            is_disqualified: false,
-            created_at: s.submitted_at
-        }));
+        // Get all results for enrichment
+        const { data: results, error: resErr } = await supabase
+            .from('results')
+            .select('attempt_token, round_number, score, rank, qualified_for_next')
+            .limit(500);
+
+        if (resErr) throw resErr;
+
+        // Build a lookup map: token_round -> result
+        const resultMap = {};
+        if (results) {
+            results.forEach(r => {
+                resultMap[`${r.attempt_token}_${r.round_number}`] = r;
+            });
+        }
+
+        // Enrich submissions with results
+        const participants = (submissions || []).map(s => {
+            const key = `${s.attempt_token}_${s.round_number}`;
+            const result = resultMap[key] || {};
+            const answerCount = Array.isArray(s.answers) ? s.answers.length : 0;
+
+            return {
+                id: s.id,
+                attempt_token: s.attempt_token,
+                round_number: s.round_number,
+                answer_count: answerCount,
+                time_taken_seconds: s.time_taken_seconds,
+                submitted_at: s.submitted_at,
+                score: result.score !== undefined ? result.score : null,
+                rank: result.rank || null,
+                qualified_for_next: result.qualified_for_next || false
+            };
+        });
 
         res.json({
             success: true,
-            data: participants || []
+            data: participants,
+            total: participants.length
         });
     } catch (error) {
         console.error('Participants fetch error:', error);
@@ -833,6 +855,187 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Reset error:', error);
         res.status(500).json({ success: false, message: 'Failed to reset event' });
+    }
+});
+// ─────────────────────────────────────────────────────────────
+// PARTICIPANT DETAILS — Admin-managed personal data
+// ─────────────────────────────────────────────────────────────
+
+// GET /participant-details — List all participant details
+router.get('/participant-details', requireAdmin, async (req, res) => {
+    try {
+        const { data: details, error } = await supabase
+            .from('participant_details')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Optionally enrich with submission/results data
+        const { data: results } = await supabase
+            .from('results')
+            .select('attempt_token, round_number, score, rank, qualified_for_next');
+
+        const resultMap = {};
+        if (results) {
+            results.forEach(r => {
+                if (!resultMap[r.attempt_token]) {
+                    resultMap[r.attempt_token] = { rounds: {}, totalScore: 0 };
+                }
+                resultMap[r.attempt_token].rounds[r.round_number] = r;
+                resultMap[r.attempt_token].totalScore += (r.score || 0);
+                if (r.qualified_for_next) {
+                    resultMap[r.attempt_token].qualified = true;
+                }
+            });
+        }
+
+        const enriched = (details || []).map(d => ({
+            ...d,
+            results: resultMap[d.attempt_token] || null
+        }));
+
+        res.json({
+            success: true,
+            data: enriched,
+            total: enriched.length
+        });
+    } catch (error) {
+        console.error('Participant details fetch error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch participant details' });
+    }
+});
+
+// POST /participant-details — Add new participant
+router.post('/participant-details', requireAdmin, async (req, res) => {
+    try {
+        const { name, college, phone, email, department, notes, attempt_token } = req.body;
+
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Name is required' });
+        }
+
+        const { data, error } = await supabase
+            .from('participant_details')
+            .insert([{
+                name: name.trim(),
+                college: college?.trim() || '',
+                phone: phone?.trim() || '',
+                email: email?.trim() || '',
+                department: department?.trim() || '',
+                notes: notes?.trim() || '',
+                attempt_token: attempt_token || null
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        auditLog(null, req.admin.id, 'PARTICIPANT_ADDED',
+            `Added participant: ${name}`, null, req);
+
+        res.json({ success: true, data, message: 'Participant added successfully' });
+    } catch (error) {
+        console.error('Add participant error:', error);
+        res.status(500).json({ success: false, message: 'Failed to add participant' });
+    }
+});
+
+// PUT /participant-details/:id — Update participant
+router.put('/participant-details/:id', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, college, phone, email, department, notes, attempt_token } = req.body;
+
+        const updateData = {
+            updated_at: new Date().toISOString()
+        };
+
+        if (name !== undefined) updateData.name = name.trim();
+        if (college !== undefined) updateData.college = college.trim();
+        if (phone !== undefined) updateData.phone = phone.trim();
+        if (email !== undefined) updateData.email = email.trim();
+        if (department !== undefined) updateData.department = department.trim();
+        if (notes !== undefined) updateData.notes = notes.trim();
+        if (attempt_token !== undefined) updateData.attempt_token = attempt_token || null;
+
+        const { data, error } = await supabase
+            .from('participant_details')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        auditLog(null, req.admin.id, 'PARTICIPANT_UPDATED',
+            `Updated participant: ${data.name} (${id})`, null, req);
+
+        res.json({ success: true, data, message: 'Participant updated successfully' });
+    } catch (error) {
+        console.error('Update participant error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update participant' });
+    }
+});
+
+// DELETE /participant-details/:id — Delete participant
+router.delete('/participant-details/:id', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: existing } = await supabase
+            .from('participant_details')
+            .select('name')
+            .eq('id', id)
+            .single();
+
+        const { error } = await supabase
+            .from('participant_details')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        auditLog(null, req.admin.id, 'PARTICIPANT_DELETED',
+            `Deleted participant: ${existing?.name || id}`, null, req);
+
+        res.json({ success: true, message: 'Participant deleted successfully' });
+    } catch (error) {
+        console.error('Delete participant error:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete participant' });
+    }
+});
+
+// GET /participant-details/export — Export CSV
+router.get('/participant-details/export', requireAdmin, async (req, res) => {
+    try {
+        const { data: details, error } = await supabase
+            .from('participant_details')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        const csv = [
+            ['Name', 'College', 'Department', 'Phone', 'Email', 'Attempt Token', 'Notes', 'Added On'].join(','),
+            ...(details || []).map(d => [
+                `"${(d.name || '').replace(/"/g, '""')}"`,
+                `"${(d.college || '').replace(/"/g, '""')}"`,
+                `"${(d.department || '').replace(/"/g, '""')}"`,
+                `"${d.phone || ''}"`,
+                `"${d.email || ''}"`,
+                `"${d.attempt_token || ''}"`,
+                `"${(d.notes || '').replace(/"/g, '""')}"`,
+                `"${d.created_at ? new Date(d.created_at).toLocaleString() : ''}"`
+            ].join(','))
+        ].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=participants.csv');
+        res.send(csv);
+    } catch (error) {
+        console.error('Export participants error:', error);
+        res.status(500).json({ success: false, message: 'Failed to export' });
     }
 });
 

@@ -41,6 +41,67 @@ async function withRetry(fn, { maxRetries = 2, label = 'DB call' } = {}) {
 
 
 // ─────────────────────────────────────────────────────────────
+// POST /register — Register participant details
+// ─────────────────────────────────────────────────────────────
+router.post('/register', async (req, res) => {
+    try {
+        const { attempt_token, name, college, phone, email, department } = req.body;
+
+        if (!attempt_token || !name) {
+            return res.status(400).json({ success: false, message: 'Name and token required' });
+        }
+
+        // Check if details already exist for this token
+        // This ensures idempotency if the request is retried
+        const { data: existing, error: fetchError } = await supabase
+            .from('participant_details')
+            .select('id')
+            .eq('attempt_token', attempt_token)
+            .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        let error;
+        if (existing) {
+            // Update existing
+            const { error: updateError } = await supabase
+                .from('participant_details')
+                .update({
+                    name,
+                    college,
+                    phone,
+                    email,
+                    department,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existing.id);
+            error = updateError;
+        } else {
+            // Insert new
+            const { error: insertError } = await supabase
+                .from('participant_details')
+                .insert({
+                    attempt_token,
+                    name,
+                    college,
+                    phone,
+                    email,
+                    department
+                });
+            error = insertError;
+        }
+
+        if (error) throw error;
+
+        res.json({ success: true, message: 'Registered successfully' });
+    } catch (error) {
+        console.error('Participant registration error:', error.message);
+        res.status(500).json({ success: false, message: 'Registration failed' });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────────────
 // GET /status — Get current round/event status
 // No auth required. Anyone can check status.
 // ─────────────────────────────────────────────────────────────
@@ -88,6 +149,14 @@ router.get('/status', async (req, res) => {
 });
 
 
+
+// Questions Cache (prevent DB overload)
+let questionsCache = {
+    round: 0,
+    data: null,
+    timestamp: 0
+};
+
 // ─────────────────────────────────────────────────────────────
 // GET /questions — Get all questions for current round
 //
@@ -107,6 +176,23 @@ router.get('/questions', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'No round is currently running'
+            });
+        }
+
+        // Check Cache
+        const CACHE_TTL = 15000; // 15 seconds
+        if (questionsCache.data &&
+            questionsCache.round === eventState.current_round &&
+            (Date.now() - questionsCache.timestamp < CACHE_TTL)) {
+
+            return res.json({
+                success: true,
+                data: {
+                    roundNumber: eventState.current_round,
+                    roundEndsAt: eventState.round_ends_at,
+                    totalQuestions: questionsCache.data.length,
+                    questions: questionsCache.data
+                }
             });
         }
 
@@ -130,6 +216,13 @@ router.get('/questions', async (req, res) => {
                 D: q.option_d
             }
         }));
+
+        // Update Cache
+        questionsCache = {
+            round: eventState.current_round,
+            data: formattedQuestions,
+            timestamp: Date.now()
+        };
 
         res.json({
             success: true,

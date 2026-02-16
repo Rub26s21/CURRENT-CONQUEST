@@ -803,6 +803,20 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="pEmail" class="form-label" style="color: #ccc;">Email Address</label>
+                        <input type="email" id="pEmail" class="form-input" placeholder="Enter your email address"
+                            required autocomplete="email"
+                            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pDepartment" class="form-label" style="color: #ccc;">Department</label>
+                        <input type="text" id="pDepartment" class="form-input"
+                            placeholder="Enter your department (e.g. ECE)" required autocomplete="organization"
+                            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+
+                    <div class="form-group">
                         <label for="pCollege" class="form-label" style="color: #ccc;">College Name</label>
                         <input type="text" id="pCollege" class="form-input" placeholder="Enter your college name"
                             required
@@ -1097,23 +1111,77 @@
     </script>
 
     <script>
-        function handleLogin() {
+        async function handleLogin() {
             const name = document.getElementById('pName').value.trim();
             const phone = document.getElementById('pPhone').value.trim();
+            const email = document.getElementById('pEmail').value.trim();
+            const department = document.getElementById('pDepartment').value.trim();
             const college = document.getElementById('pCollege').value.trim();
 
-            if (!name || !phone || !college) {
+            if (!name || !phone || !email || !department || !college) {
                 alert('Please fill in all details');
                 return;
             }
 
-            // Store for display only (client-side)
-            localStorage.setItem('qc_p_name', name);
-            localStorage.setItem('qc_p_phone', phone);
-            localStorage.setItem('qc_p_college', college);
+            const btn = document.getElementById('enterExamBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span>⏳ Registering...</span>';
+            btn.disabled = true;
 
-            // Redirect to exam
-            window.location.href = '/exam';
+            try {
+                // UUID Generator
+                const generateUUID = () => {
+                    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                };
+
+                // Generate new token for fresh login
+                const token = generateUUID();
+
+                // Send to backend
+                const response = await fetch('/api/exam/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        attempt_token: token,
+                        name,
+                        phone,
+                        email,
+                        department,
+                        college
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message || 'Registration failed');
+                }
+
+                // Store details locally
+                localStorage.setItem('qc_attempt_token', token);
+                localStorage.setItem('qc_p_name', name);
+                localStorage.setItem('qc_p_phone', phone);
+                localStorage.setItem('qc_p_email', email);
+                localStorage.setItem('qc_p_department', department);
+                localStorage.setItem('qc_p_college', college);
+
+                // Clear any previous exam state
+                localStorage.removeItem('qc_submitted');
+                localStorage.removeItem('qc_round');
+
+                // Redirect
+                window.location.href = '/exam';
+
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Registration failed: ' + (error.message || 'Please try again'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
     </script>
 </body>

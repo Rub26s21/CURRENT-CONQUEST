@@ -362,6 +362,75 @@
             margin-right: var(--space-sm);
         }
 
+        /* Submission Filters */
+        .submission-filter-btn {
+            transition: all 0.2s ease;
+        }
+
+        .submission-filter-btn.active {
+            background: var(--primary) !important;
+            color: white !important;
+            border-color: var(--primary) !important;
+        }
+
+        /* Edit Participant Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            background: var(--surface-0);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            width: 90%;
+            max-width: 550px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+            background: var(--surface-1);
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .round-cards {
@@ -541,12 +610,16 @@
                     <span>Questions</span>
                 </div>
                 <div class="nav-item" data-section="participants">
-                    <span class="nav-icon">👥</span>
-                    <span>Participants</span>
+                    <span class="nav-icon">📝</span>
+                    <span>Submissions</span>
                 </div>
                 <div class="nav-item" data-section="results">
                     <span class="nav-icon">🏆</span>
                     <span>Results</span>
+                </div>
+                <div class="nav-item" data-section="participant-details">
+                    <span class="nav-icon">👥</span>
+                    <span>Participants</span>
                 </div>
                 <div class="nav-item" data-section="file-upload">
                     <span class="nav-icon">📁</span>
@@ -564,85 +637,6 @@
 
         <!-- Main Content -->
         <main class="admin-main">
-            <!-- Settings Section -->
-            <section class="section hidden" id="section-settings">
-                <div class="admin-header">
-                    <h1 class="admin-title">⚙️ Event Settings</h1>
-                </div>
-
-                <div class="card">
-                    <div class="card-body">
-                        <h3>Round Configuration</h3>
-                        <p class="text-muted" style="margin-bottom: var(--space-lg);">Configure duration and settings
-                            for each round.</p>
-
-                        <div class="table-container">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Round</th>
-                                        <th>Duration (Minutes)</th>
-                                        <th>Question Count</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Round 1</td>
-                                        <td><input type="number" id="duration-r1" class="form-input"
-                                                style="width: 80px;" value="15"></td>
-                                        <td>15 questions</td>
-                                        <td><button class="btn btn-sm btn-primary update-round-btn"
-                                                data-round="1">Update</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Round 2</td>
-                                        <td><input type="number" id="duration-r2" class="form-input"
-                                                style="width: 80px;" value="30"></td>
-                                        <td>15 questions</td>
-                                        <td><button class="btn btn-sm btn-primary update-round-btn"
-                                                data-round="2">Update</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Round 3</td>
-                                        <td><input type="number" id="duration-r3" class="form-input"
-                                                style="width: 80px;" value="45"></td>
-                                        <td>15 questions</td>
-                                        <td><button class="btn btn-sm btn-primary update-round-btn"
-                                                data-round="3">Update</button></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Reset Event Zone -->
-                <div class="card" style="margin-top: var(--space-xl); border: 1px solid var(--danger);">
-                    <div class="card-body">
-                        <h3 class="text-danger">⚠️ Danger Zone</h3>
-                        <p class="text-muted">Resetting the event will delete all participants, scores, and exam
-                            history.</p>
-
-                        <div class="form-group" style="margin-top: var(--space-md);">
-                            <label class="form-label">
-                                <input type="checkbox" id="keepQuestionsCheck" checked>
-                                Keep Question Bank (Recommended)
-                            </label>
-                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">
-                                If unchecked, all questions will also be deleted.
-                            </p>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Type "RESET_ALL_DATA" to confirm</label>
-                            <input type="text" id="resetConfirmation" class="form-input" placeholder="RESET_ALL_DATA">
-                        </div>
-
-                        <button class="btn btn-danger" id="resetEventBtn">Reset Entire Event</button>
-                    </div>
-                </div>
-            </section>
             <!-- Dashboard Section -->
             <section class="section" id="section-dashboard">
                 <div class="admin-header">
@@ -820,29 +814,45 @@
                 </div>
             </section>
 
-            <!-- Participants Section -->
+            <!-- Submissions Section (V4: No personal data) -->
             <section class="section hidden" id="section-participants">
                 <div class="admin-header">
-                    <h1 class="admin-title">Participants</h1>
-                    <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
+                    <h1 class="admin-title">📝 Submissions</h1>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span id="submissionCount" class="badge badge-primary"
+                            style="font-size: 0.9rem; padding: 6px 14px;">0 total</span>
+                        <button class="btn btn-primary" id="downloadSubmissionsBtn">📥 Download CSV</button>
+                        <button class="btn btn-secondary" id="refreshParticipants">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Round Filter -->
+                <div style="margin-bottom: var(--space-lg); display: flex; gap: 10px;">
+                    <button class="btn btn-sm btn-secondary submission-filter-btn active" data-filter="all">All
+                        Rounds</button>
+                    <button class="btn btn-sm btn-secondary submission-filter-btn" data-filter="1">Round 1</button>
+                    <button class="btn btn-sm btn-secondary submission-filter-btn" data-filter="2">Round 2</button>
+                    <button class="btn btn-sm btn-secondary submission-filter-btn" data-filter="3">Round 3</button>
                 </div>
 
                 <div class="table-container">
                     <table class="table" id="participantsTable">
                         <thead>
                             <tr>
-                                <th>System ID</th>
-                                <th>Name</th>
-                                <th>College</th>
-                                <th>Phone</th>
-                                <th>Current Round</th>
+                                <th>#</th>
+                                <th>Attempt Token</th>
+                                <th>Round</th>
+                                <th>Answers</th>
+                                <th>Score</th>
+                                <th>Rank</th>
+                                <th>Time Taken</th>
                                 <th>Status</th>
-                                <th>Joined At</th>
+                                <th>Submitted At</th>
                             </tr>
                         </thead>
                         <tbody id="participantsTableBody">
                             <tr>
-                                <td colspan="7" class="text-center text-muted">Loading...</td>
+                                <td colspan="9" class="text-center text-muted">Loading...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -873,17 +883,15 @@
                         <thead>
                             <tr>
                                 <th>Rank</th>
-                                <th>System ID</th>
-                                <th>Name</th>
-                                <th>College/Phone</th>
+                                <th>Attempt Token</th>
                                 <th>Score</th>
-                                <th>Time</th>
+                                <th>Time Taken</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="resultsTableBody">
                             <tr>
-                                <td colspan="7" class="text-center text-muted">Select a round to view results</td>
+                                <td colspan="5" class="text-center text-muted">Select a round to view results</td>
                             </tr>
                         </tbody>
                     </table>
@@ -899,9 +907,7 @@
                         <thead>
                             <tr>
                                 <th>Final Rank</th>
-                                <th>System ID</th>
-                                <th>Name</th>
-                                <th>College</th>
+                                <th>Attempt Token</th>
                                 <th>Round 1</th>
                                 <th>Round 2</th>
                                 <th>Round 3</th>
@@ -911,12 +917,151 @@
                         </thead>
                         <tbody id="combinedResultsTableBody">
                             <tr>
-                                <td colspan="9" class="text-center text-muted">Loading combined results...</td>
+                                <td colspan="7" class="text-center text-muted">Loading combined results...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </section>
+
+            <!-- Participant Details Section (Admin-only) -->
+            <section class="section hidden" id="section-participant-details">
+                <div class="admin-header">
+                    <h1 class="admin-title">👥 Participant Details</h1>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span id="participantDetailCount" class="badge badge-primary"
+                            style="font-size: 0.9rem; padding: 6px 14px;">0 total</span>
+                        <button class="btn btn-primary" id="downloadParticipantDetailsBtn">📥 Download CSV</button>
+                        <button class="btn btn-secondary" id="refreshParticipantDetails">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Add Participant Form -->
+                <div class="card" style="margin-bottom: var(--space-xl);">
+                    <h3 style="margin-bottom: var(--space-md); color: var(--text-primary);">➕ Add New Participant</h3>
+                    <form id="addParticipantForm">
+                        <div class="form-row"
+                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
+                            <div class="form-group">
+                                <label for="pd-name">Name *</label>
+                                <input type="text" id="pd-name" class="form-control" placeholder="Full Name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pd-college">College</label>
+                                <input type="text" id="pd-college" class="form-control"
+                                    placeholder="College / Institution">
+                            </div>
+                            <div class="form-group">
+                                <label for="pd-phone">Phone</label>
+                                <input type="text" id="pd-phone" class="form-control" placeholder="Phone Number">
+                            </div>
+                        </div>
+                        <div class="form-row"
+                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
+                            <div class="form-group">
+                                <label for="pd-email">Email</label>
+                                <input type="email" id="pd-email" class="form-control" placeholder="Email Address">
+                            </div>
+                            <div class="form-group">
+                                <label for="pd-department">Department</label>
+                                <input type="text" id="pd-department" class="form-control" placeholder="Department">
+                            </div>
+                            <div class="form-group">
+                                <label for="pd-token">Link to Attempt Token</label>
+                                <input type="text" id="pd-token" class="form-control" placeholder="Optional UUID token">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="pd-notes">Notes</label>
+                            <input type="text" id="pd-notes" class="form-control"
+                                placeholder="Additional notes (optional)">
+                        </div>
+                        <button type="submit" class="btn btn-success" style="margin-top: var(--space-sm);">✅ Add
+                            Participant</button>
+                    </form>
+                </div>
+
+                <!-- Search -->
+                <div style="margin-bottom: var(--space-md);">
+                    <input type="text" id="participantSearchInput" class="form-control"
+                        placeholder="🔍 Search by name, college, phone..." style="max-width: 400px;">
+                </div>
+
+                <!-- Participants Table -->
+                <div class="table-container">
+                    <table class="table" id="participantDetailsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>College</th>
+                                <th>Department</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Token</th>
+                                <th>Score</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participantDetailsTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Edit Participant Modal -->
+            <div class="modal-overlay hidden" id="editParticipantModal">
+                <div class="modal" style="max-width: 550px;">
+                    <div class="modal-header">
+                        <h3>✏️ Edit Participant</h3>
+                        <button class="modal-close" id="closeEditParticipantModal">&times;</button>
+                    </div>
+                    <form id="editParticipantForm">
+                        <input type="hidden" id="edit-pd-id">
+                        <div class="form-group">
+                            <label for="edit-pd-name">Name *</label>
+                            <input type="text" id="edit-pd-name" class="form-control" required>
+                        </div>
+                        <div class="form-row"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                            <div class="form-group">
+                                <label for="edit-pd-college">College</label>
+                                <input type="text" id="edit-pd-college" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-pd-department">Department</label>
+                                <input type="text" id="edit-pd-department" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                            <div class="form-group">
+                                <label for="edit-pd-phone">Phone</label>
+                                <input type="text" id="edit-pd-phone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-pd-email">Email</label>
+                                <input type="email" id="edit-pd-email" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-pd-token">Attempt Token</label>
+                            <input type="text" id="edit-pd-token" class="form-control" placeholder="UUID">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-pd-notes">Notes</label>
+                            <input type="text" id="edit-pd-notes" class="form-control">
+                        </div>
+                        <div style="display: flex; gap: var(--space-md); margin-top: var(--space-md);">
+                            <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                            <button type="button" class="btn btn-secondary" id="cancelEditParticipant">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- File Upload Section -->
             <section class="section hidden" id="section-file-upload">
@@ -1059,25 +1204,96 @@
             <!-- Settings Section -->
             <section class="section hidden" id="section-settings">
                 <div class="admin-header">
-                    <h1 class="admin-title">Settings</h1>
+                    <h1 class="admin-title">⚙️ Event Settings</h1>
                 </div>
 
-                <div class="card">
+                <!-- Round Configuration -->
+                <div class="card" style="margin-bottom: var(--space-xl);">
                     <div class="card-body">
-                        <h3 style="margin-bottom: var(--space-lg); color: var(--danger);">⚠️ Danger Zone</h3>
-
-                        <div
-                            style="padding: var(--space-lg); background: hsla(0, 70%, 55%, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-lg);">
-                            <h4 style="margin-bottom: var(--space-sm);">Reset Event</h4>
-                            <p class="text-muted" style="margin-bottom: var(--space-lg);">
-                                This will delete all participants, responses, and scores. Questions will also be
-                                removed.
-                                This action cannot be undone.
-                            </p>
-                            <button class="btn btn-danger" id="resetEventBtn">
-                                🗑️ Reset Entire Event
-                            </button>
+                        <h3 style="margin-bottom: var(--space-lg);">Round Configuration</h3>
+                        <p class="text-muted" style="margin-bottom: var(--space-lg);">Configure duration for each round.
+                        </p>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Round</th>
+                                        <th>Duration (Minutes)</th>
+                                        <th>Questions</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Round 1</td>
+                                        <td><input type="number" id="duration-r1" class="form-input"
+                                                style="width: 100px;" value="15"></td>
+                                        <td>15 questions</td>
+                                        <td><button class="btn btn-sm btn-primary update-round-btn"
+                                                data-round="1">Update</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Round 2</td>
+                                        <td><input type="number" id="duration-r2" class="form-input"
+                                                style="width: 100px;" value="30"></td>
+                                        <td>15 questions</td>
+                                        <td><button class="btn btn-sm btn-primary update-round-btn"
+                                                data-round="2">Update</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Round 3</td>
+                                        <td><input type="number" id="duration-r3" class="form-input"
+                                                style="width: 100px;" value="45"></td>
+                                        <td>15 questions</td>
+                                        <td><button class="btn btn-sm btn-primary update-round-btn"
+                                                data-round="3">Update</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Audit Log -->
+                <div class="card" style="margin-bottom: var(--space-xl);">
+                    <div class="card-body">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+                            <h3>📋 Audit Log</h3>
+                            <button class="btn btn-sm btn-secondary" id="refreshAuditLogBtn">🔄 Refresh</button>
+                        </div>
+                        <div id="auditLogContainer" style="max-height: 400px; overflow-y: auto;">
+                            <p class="text-muted text-center">Loading audit logs...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="card" style="border: 1px solid var(--danger);">
+                    <div class="card-body">
+                        <h3 style="color: var(--danger); margin-bottom: var(--space-md);">⚠️ Danger Zone</h3>
+                        <p class="text-muted" style="margin-bottom: var(--space-lg);">
+                            Resetting the event will delete all submissions, results, and exam history. This cannot be
+                            undone.
+                        </p>
+
+                        <div class="form-group" style="margin-bottom: var(--space-md);">
+                            <label class="form-label">
+                                <input type="checkbox" id="keepQuestionsCheck" checked>
+                                Keep Question Bank (Recommended)
+                            </label>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+                                If unchecked, all questions will also be deleted.
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Type "RESET_ALL_DATA" to confirm</label>
+                            <input type="text" id="resetConfirmation" class="form-input" placeholder="RESET_ALL_DATA"
+                                style="max-width: 300px;">
+                        </div>
+
+                        <button class="btn btn-danger" id="resetEventBtn">🗑️ Reset Entire Event</button>
                     </div>
                 </div>
             </section>
@@ -1113,7 +1329,9 @@
                 selectedQuestionRound: 1,
                 selectedResultsRound: 1,
                 dashboardData: null,
-                refreshInterval: null
+                refreshInterval: null,
+                allSubmissions: [],
+                participantDetails: []
             };
 
             // DOM Elements
@@ -1192,8 +1410,13 @@
                         loadParticipants();
                         break;
                     case 'results':
-                        // Load combined results by default (it's the active tab)
                         loadCombinedResults();
+                        break;
+                    case 'participant-details':
+                        loadParticipantDetails();
+                        break;
+                    case 'settings':
+                        loadAuditLogs();
                         break;
                 }
             }
@@ -1887,10 +2110,39 @@
             }
 
 
+            // Load Audit Logs
+            async function loadAuditLogs() {
+                const container = document.getElementById('auditLogContainer');
+                if (!container) return;
+
+                try {
+                    const result = await api('/api/admin/audit-logs');
+                    if (result.success && result.data && result.data.length > 0) {
+                        container.innerHTML = result.data.map(log => `
+                            <div class="audit-log-item">
+                                <div class="audit-log-time">${new Date(log.created_at).toLocaleString()}</div>
+                                <div class="audit-log-content">
+                                    <span class="audit-log-type">${log.action || '-'}</span>
+                                    ${log.details || ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        container.innerHTML = '<p class="text-muted text-center">No audit logs yet</p>';
+                    }
+                } catch (error) {
+                    console.error('Load audit logs error:', error);
+                    container.innerHTML = '<p class="text-muted text-center">Failed to load audit logs</p>';
+                }
+            }
+
+            // Refresh audit log button
+            document.getElementById('refreshAuditLogBtn')?.addEventListener('click', loadAuditLogs);
+
             // Initialize Reset Event Button
             document.getElementById('resetEventBtn').addEventListener('click', async () => {
-                const confirmation = document.getElementById('resetConfirmation').value;
-                const keepQuestions = document.getElementById('keepQuestionsCheck').checked;
+                const confirmation = document.getElementById('resetConfirmation')?.value;
+                const keepQuestions = document.getElementById('keepQuestionsCheck')?.checked ?? true;
 
                 if (confirmation !== 'RESET_ALL_DATA') {
                     alert('Please type RESET_ALL_DATA to confirm.');
@@ -1904,7 +2156,7 @@
                         method: 'POST',
                         body: JSON.stringify({
                             confirmReset: confirmation,
-                            keepQuestions: keepQuestions
+                            preserveQuestions: keepQuestions
                         })
                     });
 
@@ -1961,45 +2213,330 @@
                     const result = await api('/api/admin/participants');
 
                     if (result.success) {
-                        renderParticipants(result.data);
+                        state.allSubmissions = result.data || [];
+                        document.getElementById('submissionCount').textContent = `${state.allSubmissions.length} total`;
+                        renderParticipants(state.allSubmissions);
                     }
                 } catch (error) {
                     console.error('Load participants error:', error);
                 }
             }
 
-            // Render participants
+            // Render participants (V4: enriched submissions)
             function renderParticipants(participants) {
                 const tbody = document.getElementById('participantsTableBody');
 
                 if (!participants || participants.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No participants yet</td>
+                            <td colspan="9" class="text-center text-muted">No submissions yet</td>
                         </tr>
                     `;
                     return;
                 }
 
-                tbody.innerHTML = participants.map(p => `
+                tbody.innerHTML = participants.map((p, idx) => {
+                    const token = p.attempt_token || '-';
+                    const shortToken = token.length > 12 ? token.substring(0, 8) + '...' : token;
+                    const timeTaken = p.time_taken_seconds ? formatTime(p.time_taken_seconds) : '-';
+                    const scoreDisplay = p.score !== null && p.score !== undefined ? `${p.score}/15` : 'Pending';
+                    const rankDisplay = p.rank ? `#${p.rank}` : '-';
+                    const statusBadge = p.qualified_for_next
+                        ? '<span class="badge badge-success">Qualified</span>'
+                        : p.score !== null
+                            ? '<span class="badge badge-neutral">Evaluated</span>'
+                            : '<span class="badge badge-warning" style="background: hsla(40, 80%, 50%, 0.2); color: hsl(40, 80%, 65%);">Awaiting</span>';
+
+                    return `
                     <tr>
-                        <td><code>${p.system_id}</code></td>
-                        <td>${p.name}</td>
-                        <td>${p.college_name || '-'}</td>
-                        <td>${p.phone_number || '-'}</td>
-                        <td>Round ${p.current_round}</td>
-                        <td>
-                            ${p.is_disqualified ?
-                        '<span class="badge badge-danger">Disqualified</span>' :
-                        p.is_qualified ?
-                            '<span class="badge badge-success">Qualified</span>' :
-                            '<span class="badge badge-neutral">Eliminated</span>'
-                    }
-                        </td>
-                        <td>${new Date(p.created_at).toLocaleString()}</td>
+                        <td>${idx + 1}</td>
+                        <td><code title="${token}">${shortToken}</code></td>
+                        <td>Round ${p.round_number || '-'}</td>
+                        <td>${p.answer_count || 0} answers</td>
+                        <td><strong>${scoreDisplay}</strong></td>
+                        <td>${rankDisplay}</td>
+                        <td>${timeTaken}</td>
+                        <td>${statusBadge}</td>
+                        <td>${p.submitted_at ? new Date(p.submitted_at).toLocaleString() : '-'}</td>
                     </tr>
-                `).join('');
+                `}).join('');
             }
+
+            // Submission round filter
+            document.querySelectorAll('.submission-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.submission-filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const filter = btn.dataset.filter;
+                    if (filter === 'all') {
+                        renderParticipants(state.allSubmissions);
+                    } else {
+                        const filtered = state.allSubmissions.filter(s => s.round_number === parseInt(filter));
+                        renderParticipants(filtered);
+                    }
+                });
+            });
+
+            // Download Submissions CSV
+            document.getElementById('downloadSubmissionsBtn')?.addEventListener('click', () => {
+                const data = state.allSubmissions || [];
+                if (data.length === 0) {
+                    alert('No submissions to download');
+                    return;
+                }
+
+                const csv = [
+                    ['#', 'Attempt Token', 'Round', 'Answers', 'Score', 'Rank', 'Time (seconds)', 'Qualified', 'Submitted At'].join(','),
+                    ...data.map((p, i) => [
+                        i + 1,
+                        `"${p.attempt_token || ''}"`,
+                        p.round_number || '',
+                        p.answer_count || 0,
+                        p.score !== null && p.score !== undefined ? p.score : 'Pending',
+                        p.rank || '-',
+                        p.time_taken_seconds || '',
+                        p.qualified_for_next ? 'Yes' : 'No',
+                        `"${p.submitted_at ? new Date(p.submitted_at).toLocaleString() : ''}"`
+                    ].join(','))
+                ].join('\n');
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `submissions_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // ─────────────────────────────────────────────────────
+            // PARTICIPANT DETAILS — Admin-managed personal data
+            // ─────────────────────────────────────────────────────
+
+            // Load participant details
+            async function loadParticipantDetails() {
+                try {
+                    const result = await api('/api/admin/participant-details');
+                    if (result.success) {
+                        state.participantDetails = result.data || [];
+                        document.getElementById('participantDetailCount').textContent = `${state.participantDetails.length} total`;
+                        renderParticipantDetails(state.participantDetails);
+                    }
+                } catch (error) {
+                    console.error('Load participant details error:', error);
+                }
+            }
+
+            // Render participant details table
+            function renderParticipantDetails(details) {
+                const tbody = document.getElementById('participantDetailsTableBody');
+
+                if (!details || details.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">No participants added yet. Use the form above to add participants.</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = details.map((p, idx) => {
+                    const token = p.attempt_token || '';
+                    const shortToken = token.length > 10 ? token.substring(0, 8) + '...' : (token || '-');
+                    const scoreDisplay = p.results ? `${p.results.totalScore}` : '-';
+                    const qualBadge = p.results?.qualified
+                        ? '<span class="badge badge-success" style="margin-left:4px;">Q</span>'
+                        : '';
+
+                    return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td><strong>${p.name || '-'}</strong></td>
+                        <td>${p.college || '-'}</td>
+                        <td>${p.department || '-'}</td>
+                        <td>${p.phone || '-'}</td>
+                        <td>${p.email || '-'}</td>
+                        <td><code title="${token}">${shortToken}</code></td>
+                        <td>${scoreDisplay}${qualBadge}</td>
+                        <td>
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn btn-sm btn-secondary" onclick="editParticipant('${p.id}')" title="Edit">✏️</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteParticipant('${p.id}', '${(p.name || '').replace(/'/g, "\\'")}')" title="Delete" style="background:hsla(0,70%,50%,0.2); color:hsl(0,80%,65%); border-color:hsla(0,70%,50%,0.3);">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `}).join('');
+            }
+
+            // Add participant
+            document.getElementById('addParticipantForm')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const data = {
+                    name: document.getElementById('pd-name').value,
+                    college: document.getElementById('pd-college').value,
+                    phone: document.getElementById('pd-phone').value,
+                    email: document.getElementById('pd-email').value,
+                    department: document.getElementById('pd-department').value,
+                    notes: document.getElementById('pd-notes').value,
+                    attempt_token: document.getElementById('pd-token').value || null
+                };
+
+                if (!data.name.trim()) {
+                    alert('Name is required');
+                    return;
+                }
+
+                try {
+                    const result = await api('/api/admin/participant-details', {
+                        method: 'POST',
+                        body: JSON.stringify(data)
+                    });
+
+                    if (result.success) {
+                        document.getElementById('addParticipantForm').reset();
+                        loadParticipantDetails();
+                    } else {
+                        alert(result.message || 'Failed to add participant');
+                    }
+                } catch (error) {
+                    console.error('Add participant error:', error);
+                    alert('Failed to add participant');
+                }
+            });
+
+            // Edit participant — open modal
+            window.editParticipant = function (id) {
+                const p = state.participantDetails.find(d => d.id === id);
+                if (!p) return;
+
+                document.getElementById('edit-pd-id').value = p.id;
+                document.getElementById('edit-pd-name').value = p.name || '';
+                document.getElementById('edit-pd-college').value = p.college || '';
+                document.getElementById('edit-pd-department').value = p.department || '';
+                document.getElementById('edit-pd-phone').value = p.phone || '';
+                document.getElementById('edit-pd-email').value = p.email || '';
+                document.getElementById('edit-pd-token').value = p.attempt_token || '';
+                document.getElementById('edit-pd-notes').value = p.notes || '';
+
+                document.getElementById('editParticipantModal').classList.remove('hidden');
+            };
+
+            // Close edit modal
+            const closeEditModal = () => document.getElementById('editParticipantModal').classList.add('hidden');
+            document.getElementById('closeEditParticipantModal')?.addEventListener('click', closeEditModal);
+            document.getElementById('cancelEditParticipant')?.addEventListener('click', closeEditModal);
+
+            // Edit participant — save
+            document.getElementById('editParticipantForm')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const id = document.getElementById('edit-pd-id').value;
+                const data = {
+                    name: document.getElementById('edit-pd-name').value,
+                    college: document.getElementById('edit-pd-college').value,
+                    department: document.getElementById('edit-pd-department').value,
+                    phone: document.getElementById('edit-pd-phone').value,
+                    email: document.getElementById('edit-pd-email').value,
+                    attempt_token: document.getElementById('edit-pd-token').value || null,
+                    notes: document.getElementById('edit-pd-notes').value
+                };
+
+                try {
+                    const result = await api(`/api/admin/participant-details/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(data)
+                    });
+
+                    if (result.success) {
+                        closeEditModal();
+                        loadParticipantDetails();
+                    } else {
+                        alert(result.message || 'Failed to update participant');
+                    }
+                } catch (error) {
+                    console.error('Update participant error:', error);
+                    alert('Failed to update participant');
+                }
+            });
+
+            // Delete participant
+            window.deleteParticipant = async function (id, name) {
+                const confirmed = await showConfirm(
+                    'Delete Participant',
+                    `Are you sure you want to delete "${name}"? This cannot be undone.`,
+                    '🗑️'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api(`/api/admin/participant-details/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (result.success) {
+                        loadParticipantDetails();
+                    } else {
+                        alert(result.message || 'Failed to delete participant');
+                    }
+                } catch (error) {
+                    console.error('Delete participant error:', error);
+                    alert('Failed to delete participant');
+                }
+            };
+
+            // Search participants
+            document.getElementById('participantSearchInput')?.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                if (!query) {
+                    renderParticipantDetails(state.participantDetails);
+                    return;
+                }
+                const filtered = state.participantDetails.filter(p =>
+                    (p.name || '').toLowerCase().includes(query) ||
+                    (p.college || '').toLowerCase().includes(query) ||
+                    (p.phone || '').toLowerCase().includes(query) ||
+                    (p.email || '').toLowerCase().includes(query) ||
+                    (p.department || '').toLowerCase().includes(query)
+                );
+                renderParticipantDetails(filtered);
+            });
+
+            // Download Participant Details CSV
+            document.getElementById('downloadParticipantDetailsBtn')?.addEventListener('click', () => {
+                const data = state.participantDetails || [];
+                if (data.length === 0) {
+                    alert('No participants to download');
+                    return;
+                }
+                const csv = [
+                    ['#', 'Name', 'College', 'Department', 'Phone', 'Email', 'Attempt Token', 'Total Score', 'Notes'].join(','),
+                    ...data.map((p, i) => [
+                        i + 1,
+                        `"${(p.name || '').replace(/"/g, '""')}"`,
+                        `"${(p.college || '').replace(/"/g, '""')}"`,
+                        `"${(p.department || '').replace(/"/g, '""')}"`,
+                        `"${p.phone || ''}"`,
+                        `"${p.email || ''}"`,
+                        `"${p.attempt_token || ''}"`,
+                        p.results ? p.results.totalScore : '-',
+                        `"${(p.notes || '').replace(/"/g, '""')}"`
+                    ].join(','))
+                ].join('\n');
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `participant_details_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Refresh participant details
+            document.getElementById('refreshParticipantDetails')?.addEventListener('click', loadParticipantDetails);
 
             // Load results
             async function loadResults(roundNumber) {
@@ -2016,35 +2553,36 @@
                 }
             }
 
-            // Render results
+            // Render results (V4: attempt_token based)
             function renderResults(results) {
                 const tbody = document.getElementById('resultsTableBody');
 
                 if (!results || results.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No results available for this round</td>
+                            <td colspan="5" class="text-center text-muted">No results available. Click "Shortlist" after ending a round to evaluate.</td>
                         </tr>
                     `;
                     return;
                 }
 
-                tbody.innerHTML = results.map(r => `
+                tbody.innerHTML = results.map(r => {
+                    const token = r.attempt_token || '-';
+                    const shortToken = token.length > 12 ? token.substring(0, 8) + '...' : token;
+                    return `
                     <tr>
                         <td><strong>#${r.rank || '-'}</strong></td>
-                        <td><code>${r.participants?.system_id || '-'}</code></td>
-                        <td>${r.participants?.name || '-'}</td>
-                        <td>${r.participants?.college_name || '-'}</td>
-                        <td><strong>${r.correct_answers}/15</strong></td>
+                        <td><code title="${token}">${shortToken}</code></td>
+                        <td><strong>${r.score !== null && r.score !== undefined ? r.score : '-'}/15</strong></td>
                         <td>${r.time_taken_seconds ? formatTime(r.time_taken_seconds) : '-'}</td>
                         <td>
                             ${r.qualified_for_next ?
-                        '<span class="badge badge-success">Qualified</span>' :
-                        '<span class="badge badge-neutral">Eliminated</span>'
-                    }
+                            '<span class="badge badge-success">Qualified</span>' :
+                            '<span class="badge badge-neutral">Eliminated</span>'
+                        }
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
             }
 
             // Format time
@@ -2060,123 +2598,107 @@
                 window.location.href = `/api/admin/export/${roundNumber}`;
             }
 
-            // Load Combined Results (All 3 Rounds)
+            // Load Combined Results (All 3 Rounds) - V4
             async function loadCombinedResults() {
                 const tbody = document.getElementById('combinedResultsTableBody');
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading combined results...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Loading combined results...</td></tr>';
 
                 try {
-                    // Fetch results from all 3 rounds in parallel
                     const [r1, r2, r3] = await Promise.all([
                         api('/api/admin/results/1'),
                         api('/api/admin/results/2'),
                         api('/api/admin/results/3')
                     ]);
 
-                    // Combine results by participant
-                    const participantScores = {};
+                    const tokenScores = {};
 
                     [r1, r2, r3].forEach((result, index) => {
                         const roundNum = index + 1;
                         if (result.success && result.data.results) {
                             result.data.results.forEach(r => {
-                                const pid = r.participant_id;
-                                if (!participantScores[pid]) {
-                                    participantScores[pid] = {
-                                        participant_id: pid,
-                                        system_id: r.participants?.system_id || '-',
-                                        name: r.participants?.name || '-',
-                                        college: r.participants?.college_name || '-',
-                                        round1: null,
-                                        round2: null,
-                                        round3: null,
+                                const token = r.attempt_token || 'unknown';
+                                if (!tokenScores[token]) {
+                                    tokenScores[token] = {
+                                        attempt_token: token,
+                                        round1: null, round2: null, round3: null,
                                         total: 0
                                     };
                                 }
-                                participantScores[pid][`round${roundNum}`] = r.correct_answers;
-                                participantScores[pid].total += (r.correct_answers || 0);
+                                tokenScores[token][`round${roundNum}`] = r.score;
+                                tokenScores[token].total += (r.score || 0);
                             });
                         }
                     });
 
-                    // Convert to array and sort by total score
-                    const sortedResults = Object.values(participantScores)
+                    const sortedResults = Object.values(tokenScores)
                         .sort((a, b) => b.total - a.total);
 
                     if (sortedResults.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No results available yet</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No results available yet</td></tr>';
                         return;
                     }
 
-                    // Render combined results
-                    tbody.innerHTML = sortedResults.map((p, index) => `
+                    tbody.innerHTML = sortedResults.map((p, index) => {
+                        const shortToken = p.attempt_token.length > 12 ? p.attempt_token.substring(0, 8) + '...' : p.attempt_token;
+                        return `
                         <tr>
                             <td><strong>#${index + 1}</strong></td>
-                            <td><code>${p.system_id}</code></td>
-                            <td>${p.name}</td>
-                            <td>${p.college}</td>
+                            <td><code title="${p.attempt_token}">${shortToken}</code></td>
                             <td>${p.round1 !== null ? p.round1 + '/15' : '-'}</td>
                             <td>${p.round2 !== null ? p.round2 + '/15' : '-'}</td>
                             <td>${p.round3 !== null ? p.round3 + '/15' : '-'}</td>
                             <td><strong style="color: var(--primary-light);">${p.total}/45</strong></td>
                             <td>
                                 ${index < 3 ? '<span class="badge badge-success">🏆 Top 3</span>' :
-                            index < 10 ? '<span class="badge badge-primary">Top 10</span>' :
-                                '<span class="badge badge-neutral">Participant</span>'}
+                                index < 10 ? '<span class="badge badge-primary">Top 10</span>' :
+                                    '<span class="badge badge-neutral">Participant</span>'}
                             </td>
                         </tr>
-                    `).join('');
+                    `}).join('');
                 } catch (error) {
                     console.error('Load combined results error:', error);
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Error loading combined results</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Error loading combined results</td></tr>';
                 }
             }
 
-            // Export Combined Results
+            // Export Combined Results - V4
             document.getElementById('exportCombinedResultsBtn')?.addEventListener('click', async () => {
                 try {
-                    // Fetch all results
                     const [r1, r2, r3] = await Promise.all([
                         api('/api/admin/results/1'),
                         api('/api/admin/results/2'),
                         api('/api/admin/results/3')
                     ]);
 
-                    const participantScores = {};
+                    const tokenScores = {};
                     [r1, r2, r3].forEach((result, index) => {
                         const roundNum = index + 1;
                         if (result.success && result.data.results) {
                             result.data.results.forEach(r => {
-                                const pid = r.participant_id;
-                                if (!participantScores[pid]) {
-                                    participantScores[pid] = {
-                                        system_id: r.participants?.system_id || '',
-                                        name: r.participants?.name || '',
-                                        college: r.participants?.college_name || '',
-                                        round1: '',
-                                        round2: '',
-                                        round3: '',
+                                const token = r.attempt_token || '';
+                                if (!tokenScores[token]) {
+                                    tokenScores[token] = {
+                                        attempt_token: token,
+                                        round1: '', round2: '', round3: '',
                                         total: 0
                                     };
                                 }
-                                participantScores[pid][`round${roundNum}`] = r.correct_answers;
-                                participantScores[pid].total += (r.correct_answers || 0);
+                                tokenScores[token][`round${roundNum}`] = r.score;
+                                tokenScores[token].total += (r.score || 0);
                             });
                         }
                     });
 
-                    const sorted = Object.values(participantScores).sort((a, b) => b.total - a.total);
+                    const sorted = Object.values(tokenScores).sort((a, b) => b.total - a.total);
 
-                    // Generate CSV
                     const csv = [
-                        ['Rank', 'System ID', 'Name', 'College', 'Round 1', 'Round 2', 'Round 3', 'Total Score'].join(','),
+                        ['Rank', 'Attempt Token', 'Round 1', 'Round 2', 'Round 3', 'Total Score'].join(','),
                         ...sorted.map((p, i) => [
-                            i + 1, p.system_id, `"${p.name}"`, `"${p.college}"`,
+                            i + 1, `"${p.attempt_token}"`,
                             p.round1 || 0, p.round2 || 0, p.round3 || 0, p.total
                         ].join(','))
                     ].join('\n');
 
-                    // Download
                     const blob = new Blob([csv], { type: 'text/csv' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -2190,42 +2712,6 @@
                 }
             });
 
-            // Reset event
-            async function resetEvent() {
-                const confirmed = await showConfirm(
-                    '⚠️ Reset Entire Event',
-                    'This will DELETE ALL participants, responses, scores, and questions. This action CANNOT be undone. Are you absolutely sure?',
-                    '🗑️'
-                );
-
-                if (!confirmed) return;
-
-                // Double confirmation
-                const doubleConfirmed = await showConfirm(
-                    'Final Confirmation',
-                    'Type "RESET" mentally and click confirm to proceed with the reset.',
-                    '⚠️'
-                );
-
-                if (!doubleConfirmed) return;
-
-                try {
-                    const result = await api('/api/admin/reset-event', {
-                        method: 'POST',
-                        body: JSON.stringify({ confirmReset: 'RESET_ALL_DATA' })
-                    });
-
-                    if (result.success) {
-                        alert('Event has been reset successfully');
-                        loadDashboard();
-                    } else {
-                        alert(result.message || 'Reset failed');
-                    }
-                } catch (error) {
-                    console.error('Reset error:', error);
-                    alert('Reset failed');
-                }
-            }
 
             // Auto refresh
             function startAutoRefresh() {
@@ -2268,7 +2754,6 @@
             addSafeEventListener('bulkImportBtn', 'click', bulkImport);
             addSafeEventListener('refreshParticipants', 'click', loadParticipants);
             addSafeEventListener('exportResultsBtn', 'click', exportResults);
-            addSafeEventListener('resetEventBtn', 'click', resetEvent);
 
             // Navigation
             document.querySelectorAll('.nav-item').forEach(item => {
