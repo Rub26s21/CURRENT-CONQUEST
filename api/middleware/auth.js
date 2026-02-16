@@ -1,11 +1,12 @@
 /**
- * Authentication Middleware — Production CBT Engine
- * Quiz Conquest v3.0
+ * Authentication Middleware — V4 Architecture
+ * Quiz Conquest
  *
  * DESIGN:
  *   • requireAdmin: Trusts session (DB verified at login only)
- *   • requireParticipant: Session + DB verification + disqualification check
+ *   • NO requireParticipant — V4 has no participant sessions
  *   • auditLog: Fire-and-forget (NEVER blocks request handlers)
+ *   • audit_logs table no longer has participant_id FK
  */
 
 const { supabase } = require('../config/database');
@@ -30,78 +31,21 @@ const requireAdmin = (req, res, next) => {
 };
 
 /**
- * requireParticipant — Verify participant exists and is eligible
- */
-const requireParticipant = async (req, res, next) => {
-    try {
-        if (!req.session?.participantId) {
-            return res.status(401).json({
-                success: false,
-                message: 'Participant authentication required'
-            });
-        }
-
-        const { data: participant, error } = await supabase
-            .from('participants')
-            .select('*')
-            .eq('id', req.session.participantId)
-            .single();
-
-        if (error || !participant) {
-            if (req.session?.destroy) req.session.destroy(() => { });
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid session — please log in again'
-            });
-        }
-
-        if (!participant.is_active) {
-            return res.status(403).json({
-                success: false,
-                message: 'Your account has been deactivated'
-            });
-        }
-
-        // Attach participant to request
-        req.participant = participant;
-
-        // Update last_activity (fire-and-forget)
-        supabase
-            .from('participants')
-            .update({ last_activity: new Date().toISOString() })
-            .eq('id', participant.id)
-            .then(() => { })
-            .catch(() => { });
-
-        next();
-    } catch (error) {
-        console.error('Participant auth error:', error);
-        res.status(500).json({ success: false, message: 'Authentication error' });
-    }
-};
-
-/**
  * auditLog — Fire-and-forget, NEVER awaited
  *
- * Usage: auditLog(participantId, adminId, 'EVENT_TYPE', 'description', roundNumber, req, metadata)
+ * V4: No participant_id. Uses attempt_token in metadata if needed.
+ * Usage: auditLog(null, adminId, 'EVENT_TYPE', 'description', roundNumber, req, metadata)
  * Do NOT await this function.
  */
-const auditLog = (participantId, adminId, eventType, description, roundNumber = null, req = null, metadata = null) => {
+const auditLog = (unused, adminId, eventType, description, roundNumber = null, req = null, metadata = null) => {
     const logData = {
         event_type: eventType,
         event_description: description
     };
 
-    if (participantId) logData.participant_id = participantId;
     if (adminId) logData.admin_id = adminId;
     if (roundNumber !== null && typeof roundNumber === 'number') logData.round_number = roundNumber;
     if (metadata) logData.metadata = typeof metadata === 'object' ? metadata : { value: metadata };
-
-    if (req) {
-        logData.ip_address = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim()
-            || req.connection?.remoteAddress || null;
-        logData.user_agent = req.headers?.['user-agent'] || null;
-    }
 
     supabase
         .from('audit_logs')
@@ -112,4 +56,4 @@ const auditLog = (participantId, adminId, eventType, description, roundNumber = 
         });
 };
 
-module.exports = { requireAdmin, requireParticipant, auditLog };
+module.exports = { requireAdmin, auditLog };

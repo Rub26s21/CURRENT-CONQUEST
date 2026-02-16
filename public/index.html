@@ -778,40 +778,20 @@
             </div>
 
             <div class="login-card" id="loginCard">
-                <h2 style="color: #fff;">Participant Registration</h2>
+                <h2 style="color: #fff;">Welcome, Participant!</h2>
+                <p style="color: rgba(255,255,255,0.6); margin-bottom: var(--space-xl); font-size: 0.95rem;">
+                    No registration required. Click below to enter the exam portal.
+                    A unique token will be assigned to you automatically.
+                </p>
 
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label class="form-label" for="participantName" style="color: rgba(255,255,255,0.7);">Full Name
-                            *</label>
-                        <input type="text" id="participantName" name="name" class="form-input"
-                            placeholder="Enter your full name" required autocomplete="name">
-                    </div>
+                <div id="statusMessage" class="alert alert-info" style="display: none;">
+                    <span id="statusText"></span>
+                </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="collegeName" style="color: rgba(255,255,255,0.7);">College Name
-                            *</label>
-                        <input type="text" id="collegeName" name="collegeName" class="form-input"
-                            placeholder="Enter your college name" required autocomplete="organization">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="phoneNumber" style="color: rgba(255,255,255,0.7);">Phone Number
-                            *</label>
-                        <input type="tel" id="phoneNumber" name="phoneNumber" class="form-input"
-                            placeholder="Enter your phone number" required autocomplete="tel" pattern="[0-9]{10}"
-                            title="Please enter a 10-digit phone number">
-                    </div>
-
-                    <div id="formError" class="alert alert-danger" style="display: none;">
-                        <span id="errorMessage"></span>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="loginBtn">
-                        <span id="loginBtnText">Join Examination</span>
-                        <div class="spinner" id="loginSpinner" style="display: none;"></div>
-                    </button>
-                </form>
+                <button class="btn btn-primary btn-lg btn-block" id="enterExamBtn"
+                    onclick="window.location.href='/exam'">
+                    <span>⚡ Enter Examination</span>
+                </button>
 
                 <div class="event-info">
                     <div class="event-info-item">
@@ -825,6 +805,10 @@
                     <div class="event-info-item">
                         <span class="event-info-icon">🏆</span>
                         <span>Top performers qualify for next rounds</span>
+                    </div>
+                    <div class="event-info-item">
+                        <span class="event-info-icon">🔒</span>
+                        <span>No personal data stored — fully anonymous</span>
                     </div>
                 </div>
             </div>
@@ -1027,23 +1011,19 @@
 
     <script>
         /**
-         * Quiz Conquest - Participant Login Page
+         * Quiz Conquest V4 — Landing Page
+         * No login, no registration, no personal data.
+         * Just intro animation → Enter Exam button.
          */
         (function () {
             'use strict';
 
-            // DOM Elements
             const introScreen = document.getElementById('introScreen');
             const introParticles = document.getElementById('introParticles');
             const loginPage = document.getElementById('loginPage');
-            const loginForm = document.getElementById('loginForm');
-            const loginBtn = document.getElementById('loginBtn');
-            const loginBtnText = document.getElementById('loginBtnText');
-            const loginSpinner = document.getElementById('loginSpinner');
-            const formError = document.getElementById('formError');
-            const errorMessage = document.getElementById('errorMessage');
             const inactiveNotice = document.getElementById('inactiveNotice');
-            const loginCard = document.getElementById('loginCard');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusText = document.getElementById('statusText');
 
             // Create floating particles for intro
             function createIntroParticles() {
@@ -1057,120 +1037,41 @@
                 }
             }
 
-            // Show login page after intro
-            function showLoginAfterIntro() {
+            // Show landing page after intro animation
+            function showPageAfterIntro() {
                 setTimeout(() => {
                     introScreen.classList.add('fade-out');
                     setTimeout(() => {
                         introScreen.style.display = 'none';
                         loginPage.style.display = 'flex';
                     }, 1000);
-                }, 4500); // 4.5 seconds for full animation
+                }, 4500);
             }
 
-            // API Helper
-            async function api(endpoint, options = {}) {
-                const response = await fetch(endpoint, {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    },
-                    credentials: 'include'
-                });
-                return response.json();
-            }
-
-            // Show error message
-            function showError(message) {
-                errorMessage.textContent = message;
-                formError.style.display = 'flex';
-            }
-
-            // Hide error message
-            function hideError() {
-                formError.style.display = 'none';
-            }
-
-            // Set loading state
-            function setLoading(loading) {
-                loginBtn.disabled = loading;
-                loginBtnText.style.display = loading ? 'none' : 'inline';
-                loginSpinner.style.display = loading ? 'inline-block' : 'none';
-            }
-
-            // Check session status
-            async function checkSession() {
+            // Check event status (optional, just for UX)
+            async function checkEventStatus() {
                 try {
-                    const result = await api('/api/participant/session');
+                    const response = await fetch('/api/exam/status');
+                    const result = await response.json();
 
-                    if (result.success && result.authenticated) {
-                        // Already logged in, skip intro and redirect to exam page
-                        introScreen.style.display = 'none';
-                        window.location.href = '/exam';
-                        return;
-                    }
-
-                    // Not logged in - show intro animation then login
-                    createIntroParticles();
-                    showLoginAfterIntro();
-
-                } catch (error) {
-                    console.error('Session check error:', error);
-                    // Still show intro animation
-                    createIntroParticles();
-                    showLoginAfterIntro();
-                }
-            }
-
-            // Handle login form submission
-            async function handleLogin(e) {
-                e.preventDefault();
-                hideError();
-
-                const name = document.getElementById('participantName').value.trim();
-                const collegeName = document.getElementById('collegeName').value.trim();
-                const phoneNumber = document.getElementById('phoneNumber').value.trim();
-
-                if (!name || !collegeName || !phoneNumber) {
-                    showError('Please fill in all required fields');
-                    return;
-                }
-
-                // Validate phone number (10 digits)
-                if (!/^[0-9]{10}$/.test(phoneNumber)) {
-                    showError('Please enter a valid 10-digit phone number');
-                    return;
-                }
-
-                setLoading(true);
-
-                try {
-                    const result = await api('/api/participant/login', {
-                        method: 'POST',
-                        body: JSON.stringify({ name, collegeName, phoneNumber })
-                    });
-
-                    if (result.success) {
-                        // Redirect to exam page
-                        window.location.href = '/exam';
-                    } else {
-                        if (result.message.includes('not active')) {
+                    if (result.success && result.data) {
+                        if (!result.data.eventActive) {
                             inactiveNotice.classList.add('show');
+                        } else if (result.data.roundStatus === 'running') {
+                            statusMessage.style.display = 'flex';
+                            statusText.textContent = `Round ${result.data.currentRound} is LIVE! Click below to join.`;
                         }
-                        showError(result.message || 'Login failed. Please try again.');
                     }
                 } catch (error) {
-                    console.error('Login error:', error);
-                    showError('Connection error. Please check your network and try again.');
-                } finally {
-                    setLoading(false);
+                    // Silently fail — just show the enter button
+                    console.log('Status check skipped');
                 }
             }
 
             // Initialize
-            loginForm.addEventListener('submit', handleLogin);
-            checkSession();
+            createIntroParticles();
+            showPageAfterIntro();
+            checkEventStatus();
         })();
     </script>
 </body>

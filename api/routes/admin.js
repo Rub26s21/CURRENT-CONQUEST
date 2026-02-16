@@ -1,12 +1,13 @@
 /**
- * Admin Routes — Production-Grade CBT Engine
- * Quiz Conquest v3.0
+ * Admin Routes — V4 Architecture
+ * Quiz Conquest
  *
  * DESIGN RULES:
- *   • Round end calls finalize_round() (single atomic DB function)
+ *   • No participants table — submissions keyed by attempt_token
+ *   • Round end calls finalize_round_v4() (single atomic DB function)
  *   • No race condition between timer-end and admin-end
- *   • Disqualified participants excluded from ranking
- *   • Top 25 qualification (not percentage)
+ *   • Deterministic ranking via rank_round()
+ *   • Top 25 qualification via shortlist_round()
  *   • All admin actions audit-logged (fire-and-forget)
  *   • Every mutation is idempotent
  */
@@ -126,7 +127,7 @@ router.get('/session', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /dashboard — Dashboard data
+// GET /dashboard — Dashboard data (V4: uses submissions/results)
 // ─────────────────────────────────────────────────────────────
 router.get('/dashboard', requireAdmin, async (req, res) => {
     try {
@@ -137,23 +138,24 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             .single();
         if (eventError) throw eventError;
 
-        const { count: totalParticipants } = await supabase
-            .from('participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_active', true);
+        // Count submissions for current round
+        let submittedCount = 0;
+        let totalSubmissions = 0;
+        if (eventState.current_round > 0) {
+            const { count } = await supabase
+                .from('submissions')
+                .select('*', { count: 'exact', head: true })
+                .eq('round_number', eventState.current_round);
+            submittedCount = count || 0;
+        }
 
-        const { count: qualifiedParticipants } = await supabase
-            .from('participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_active', true)
-            .eq('is_qualified', true)
-            .eq('is_disqualified', false);
+        // Total submissions across all rounds
+        const { count: globalCount } = await supabase
+            .from('submissions')
+            .select('*', { count: 'exact', head: true });
+        totalSubmissions = globalCount || 0;
 
-        const { count: disqualifiedCount } = await supabase
-            .from('participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_disqualified', true);
-
+        // Question counts per round
         const { data: questionCounts } = await supabase
             .from('questions')
             .select('round_number');
@@ -169,15 +171,17 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             .select('*')
             .order('round_number');
 
-        let submittedCount = 0;
-        if (eventState.current_round > 0) {
-            const { count } = await supabase
-                .from('exam_sessions')
-                .select('*', { count: 'exact', head: true })
-                .eq('round_number', eventState.current_round)
-                .eq('is_submitted', true);
-            submittedCount = count || 0;
-        }
+        // Result counts per round
+        const { data: resultCounts } = await supabase
+            .from('results')
+            .select('round_number, qualified_for_next');
+
+        const qualifiedPerRound = {};
+        (resultCounts || []).forEach(r => {
+            if (!qualifiedPerRound[r.round_number]) qualifiedPerRound[r.round_number] = { total: 0, qualified: 0 };
+            qualifiedPerRound[r.round_number].total++;
+            if (r.qualified_for_next) qualifiedPerRound[r.round_number].qualified++;
+        });
 
         res.json({
             success: true,
@@ -189,12 +193,11 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
                     roundEndsAt: eventState.round_ends_at,
                     eventActive: eventState.event_active
                 },
-                participants: {
-                    total: totalParticipants || 0,
-                    qualified: qualifiedParticipants || 0,
-                    disqualified: disqualifiedCount || 0,
-                    submittedCurrentRound: submittedCount
+                submissions: {
+                    currentRound: submittedCount,
+                    total: totalSubmissions
                 },
+                qualifiedPerRound,
                 questionsPerRound,
                 rounds: rounds || []
             }
@@ -323,21 +326,17 @@ router.post('/round/start', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /round/end — END ROUND (CRITICAL)
+// POST /round/end — END ROUND (V4: uses finalize_round_v4)
 //
-// Calls the SINGLE ATOMIC finalize_round() database function.
-// This handles:
-//   1. Idempotent guard (prevents double execution)
-//   2. Auto-submit all pending sessions
-//   3. Calculate scores (responses × questions comparison)
-//   4. Generate rankings (exclude disqualified)
-//   5. Shortlist Top 25
-//   6. Update participants
-//   7. Mark round completed
-//
-// Safe against race conditions — if admin clicks twice, or
-// both timer-end and admin-end fire simultaneously, only
-// the first call executes; the second is a no-op.
+// Calls the SINGLE ATOMIC finalize_round_v4() database function.
+// IDEMPOTENT: double calls are no-ops.
+// SEQUENCE:
+//   1. Lock round (idempotent guard)
+//   2. Evaluate all submissions (bulk)
+//   3. Rank results deterministically
+//   4. Shortlist top 25
+//   5. Update event_state
+//   6. Return summary
 // ─────────────────────────────────────────────────────────────
 router.post('/round/end', requireAdmin, async (req, res) => {
     try {
@@ -354,13 +353,13 @@ router.post('/round/end', requireAdmin, async (req, res) => {
 
         const roundNumber = eventState.current_round;
 
-        // ── CALL ATOMIC finalize_round() ──────────────────────
-        const { data: result, error } = await supabase.rpc('finalize_round', {
+        // ── CALL ATOMIC finalize_round_v4() ───────────────────
+        const { data: result, error } = await supabase.rpc('finalize_round_v4', {
             p_round_number: roundNumber
         });
 
         if (error) {
-            console.error('finalize_round RPC error:', error);
+            console.error('finalize_round_v4 RPC error:', error);
             throw error;
         }
 
@@ -374,11 +373,16 @@ router.post('/round/end', requireAdmin, async (req, res) => {
             });
         }
 
+        // Mark shortlisting as completed
+        await supabase
+            .from('rounds')
+            .update({ shortlisting_completed: true })
+            .eq('round_number', roundNumber);
+
         auditLog(null, req.admin.id, 'ROUND_ENDED',
             `Round ${roundNumber} finalized — ` +
-            `${result.auto_submitted} auto-submitted, ` +
-            `${result.total_scored} scored, ` +
-            `${result.qualified_count}/${result.total_eligible} qualified`,
+            `${result.total_evaluated || 0} evaluated, ` +
+            `${result.qualified_count || 0} qualified`,
             roundNumber, req, result);
 
         res.json({
@@ -418,28 +422,34 @@ router.post('/round/shortlist', requireAdmin, async (req, res) => {
             });
         }
 
-        // Recalculate scores first
-        const { error: scoreErr } = await supabase.rpc('calculate_round_scores', {
+        // Re-evaluate
+        const { error: evalErr } = await supabase.rpc('evaluate_round', {
             p_round_number: roundNumber
         });
-        if (scoreErr) throw scoreErr;
+        if (evalErr) throw evalErr;
 
-        // Regenerate rankings
-        const { error: rankErr } = await supabase.rpc('generate_rankings', {
+        // Re-rank
+        const { error: rankErr } = await supabase.rpc('rank_round', {
             p_round_number: roundNumber
         });
         if (rankErr) throw rankErr;
 
-        // Perform shortlisting with custom topCount
+        // Re-shortlist with custom topCount
         const finalTopCount = topCount || 25;
-        const { data: result, error: shortlistErr } = await supabase.rpc('perform_shortlisting', {
+        const { data: result, error: shortlistErr } = await supabase.rpc('shortlist_round', {
             p_round_number: roundNumber,
             p_top_count: finalTopCount
         });
         if (shortlistErr) throw shortlistErr;
 
+        // Mark shortlisting as completed
+        await supabase
+            .from('rounds')
+            .update({ shortlisting_completed: true })
+            .eq('round_number', roundNumber);
+
         auditLog(null, req.admin.id, 'SHORTLISTING_COMPLETED',
-            `Round ${roundNumber} shortlisting — Top ${finalTopCount}`,
+            `Round ${roundNumber} re-shortlisted — Top ${finalTopCount}`,
             roundNumber, req, result);
 
         res.json({
@@ -454,21 +464,15 @@ router.post('/round/shortlist', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /results/:roundNumber — Get results
+// GET /results/:roundNumber — Get results (V4: from results table)
 // ─────────────────────────────────────────────────────────────
 router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
     try {
         const roundNumber = parseInt(req.params.roundNumber);
 
         const { data: results, error } = await supabase
-            .from('scores')
-            .select(`
-                *,
-                participants:participant_id (
-                    system_id, name, college_name, phone_number,
-                    is_disqualified, disqualification_reason
-                )
-            `)
+            .from('results')
+            .select('*')
             .eq('round_number', roundNumber)
             .order('rank', { ascending: true, nullsFirst: false });
 
@@ -476,10 +480,7 @@ router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
 
         const { data: auditLogs } = await supabase
             .from('audit_logs')
-            .select(`
-                *,
-                participants:participant_id (system_id, name)
-            `)
+            .select('*')
             .eq('round_number', roundNumber)
             .order('created_at', { ascending: false });
 
@@ -497,82 +498,27 @@ router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /participants — Get all participants
+// GET /submissions/:roundNumber — Get submissions for a round
 // ─────────────────────────────────────────────────────────────
-router.get('/participants', requireAdmin, async (req, res) => {
+router.get('/submissions/:roundNumber', requireAdmin, async (req, res) => {
     try {
-        const { data: participants, error } = await supabase
-            .from('participants')
+        const roundNumber = parseInt(req.params.roundNumber);
+
+        const { data: submissions, error } = await supabase
+            .from('submissions')
             .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json({ success: true, data: participants || [] });
-    } catch (error) {
-        console.error('Participants fetch error:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch participants' });
-    }
-});
-
-// ─────────────────────────────────────────────────────────────
-// POST /participant/disqualify — Admin disqualification override
-// ─────────────────────────────────────────────────────────────
-router.post('/participant/disqualify', requireAdmin, async (req, res) => {
-    try {
-        const { participantId, reason } = req.body;
-
-        if (!participantId) {
-            return res.status(400).json({ success: false, message: 'Participant ID required' });
-        }
-
-        const { error } = await supabase
-            .from('participants')
-            .update({
-                is_disqualified: true,
-                disqualification_reason: reason || 'Admin manual disqualification'
-            })
-            .eq('id', participantId);
+            .eq('round_number', roundNumber)
+            .order('submitted_at', { ascending: false });
 
         if (error) throw error;
 
-        auditLog(participantId, req.admin.id, 'ADMIN_DISQUALIFY',
-            `Admin disqualified: ${reason || 'No reason given'}`, null, req);
-
-        res.json({ success: true, message: 'Participant disqualified' });
+        res.json({
+            success: true,
+            data: submissions || []
+        });
     } catch (error) {
-        console.error('Disqualify error:', error);
-        res.status(500).json({ success: false, message: 'Failed to disqualify participant' });
-    }
-});
-
-// ─────────────────────────────────────────────────────────────
-// POST /participant/reinstate — Admin reinstatement override
-// ─────────────────────────────────────────────────────────────
-router.post('/participant/reinstate', requireAdmin, async (req, res) => {
-    try {
-        const { participantId } = req.body;
-
-        if (!participantId) {
-            return res.status(400).json({ success: false, message: 'Participant ID required' });
-        }
-
-        const { error } = await supabase
-            .from('participants')
-            .update({
-                is_disqualified: false,
-                disqualification_reason: null,
-                is_qualified: true
-            })
-            .eq('id', participantId);
-
-        if (error) throw error;
-
-        auditLog(participantId, req.admin.id, 'ADMIN_REINSTATE',
-            'Admin reinstated participant', null, req);
-
-        res.json({ success: true, message: 'Participant reinstated' });
-    } catch (error) {
-        console.error('Reinstate error:', error);
-        res.status(500).json({ success: false, message: 'Failed to reinstate participant' });
+        console.error('Submissions fetch error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch submissions' });
     }
 });
 
@@ -583,10 +529,7 @@ router.get('/audit-logs', requireAdmin, async (req, res) => {
     try {
         const { data: logs, error } = await supabase
             .from('audit_logs')
-            .select(`
-                *,
-                participants:participant_id (system_id, name)
-            `)
+            .select('*')
             .order('created_at', { ascending: false })
             .limit(500);
         if (error) throw error;
@@ -598,7 +541,8 @@ router.get('/audit-logs', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /export/:roundNumber — Export results as CSV
+// GET /export/:roundNumber — Export results as CSV (V4)
+// No personal data — only attempt_token, score, time, rank
 // ─────────────────────────────────────────────────────────────
 router.get('/export/:roundNumber', requireAdmin, async (req, res) => {
     try {
@@ -618,47 +562,24 @@ router.get('/export/:roundNumber', requireAdmin, async (req, res) => {
         }
 
         const { data: results, error } = await supabase
-            .from('scores')
-            .select(`
-                *,
-                participants:participant_id (
-                    system_id, name, college_name, phone_number,
-                    is_disqualified
-                )
-            `)
+            .from('results')
+            .select('*')
             .eq('round_number', roundNumber)
             .order('rank', { ascending: true, nullsFirst: false });
 
         if (error) throw error;
 
-        const { data: sessions } = await supabase
-            .from('exam_sessions')
-            .select('participant_id, tab_switch_count, submission_type')
-            .eq('round_number', roundNumber);
-
-        const sessionMap = {};
-        sessions?.forEach(s => { sessionMap[s.participant_id] = s; });
-
         const csvRows = [
-            ['Rank', 'System ID', 'Name', 'College', 'Phone', 'Score',
-                'Time (sec)', 'Tab Switches', 'Submission Type', 'Qualified',
-                'Disqualified']
+            ['Rank', 'Attempt Token', 'Score', 'Time (sec)', 'Qualified']
         ];
 
         results?.forEach(r => {
-            const sess = sessionMap[r.participant_id] || {};
             csvRows.push([
-                r.rank || 'DQ',
-                r.participants?.system_id || '',
-                r.participants?.name || '',
-                r.participants?.college_name || '',
-                r.participants?.phone_number || '',
-                r.correct_answers,
+                r.rank || '-',
+                r.attempt_token,
+                r.score,
                 r.time_taken_seconds || '',
-                sess.tab_switch_count || 0,
-                sess.submission_type || '',
-                r.qualified_for_next ? 'Yes' : 'No',
-                r.participants?.is_disqualified ? 'Yes' : 'No'
+                r.qualified_for_next ? 'Yes' : 'No'
             ]);
         });
 
@@ -710,7 +631,8 @@ router.post('/round/update', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /reset-event — Reset entire event (DANGEROUS)
+// POST /reset-event — Reset entire event (V4)
+// Only clears submissions and results. No participants table.
 // ─────────────────────────────────────────────────────────────
 router.post('/reset-event', requireAdmin, async (req, res) => {
     try {
@@ -720,17 +642,14 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid confirmation code' });
         }
 
-        // Delete in FK order
+        // Delete in order
         await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('responses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('exam_sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('submissions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
         if (!preserveQuestions) {
             await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         }
-
-        await supabase.from('participants').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
         // Reset rounds
         await supabase
@@ -755,6 +674,9 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
                 updated_at: new Date().toISOString()
             })
             .eq('id', 1);
+
+        auditLog(null, req.admin.id, 'EVENT_RESET',
+            `Event reset${preserveQuestions ? ' (questions preserved)' : ''}`, null, req);
 
         res.json({ success: true, message: 'Event reset successfully' });
     } catch (error) {

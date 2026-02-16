@@ -1,6 +1,12 @@
 /**
- * Server Entry Point
+ * Server Entry Point — V4 Architecture
  * Quiz Conquest - ECE Professional Online Exam Platform
+ *
+ * ARCHITECTURE:
+ *   • Admin routes: session-based (login/logout/round control)
+ *   • Participant routes: NO sessions, NO auth
+ *   • All participant identification via attempt_token (UUID)
+ *   • No personal data storage
  */
 
 require('dotenv').config();
@@ -25,7 +31,7 @@ app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet({
-    contentSecurityPolicy: false, // Disable for local development
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
 }));
 
@@ -41,7 +47,8 @@ app.use(cors({
             'http://127.0.0.1:3000',
             /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d+$/,
             /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$/,
-            /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}:\d+$/
+            /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}:\d+$/,
+            /^https:\/\/.*\.vercel\.app$/
         ];
 
         const allowed = allowedOrigins.some(pattern => {
@@ -64,23 +71,32 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Session middleware
+// Session middleware (only needed for admin panel)
 app.use(session(sessionConfig));
 
 // Static files
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API Routes
+// ──── API Routes ────────────────────────────────────────────
+
+// Admin routes (session-based auth)
 app.use('/api/admin', adminRoutes);
+
+// Question management (admin-only)
 app.use('/api/questions', questionRoutes);
-app.use('/api/participant', participantRoutes);
+
+// File upload (admin-only)
 app.use('/api/upload', uploadRoutes);
+
+// Participant/exam routes (NO sessions, NO auth)
+app.use('/api/exam', participantRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
-        message: 'Quiz Conquest API is running',
+        message: 'Quiz Conquest V4 API is running',
+        version: '4.0.0',
         timestamp: new Date().toISOString()
     });
 });
@@ -94,7 +110,8 @@ app.get('/api/server-time', (req, res) => {
     });
 });
 
-// Serve frontend pages
+// ──── Frontend Routes ───────────────────────────────────────
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
@@ -137,13 +154,15 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║     QUIZ CONQUEST - ECE Online Exam Platform                 ║
+║     QUIZ CONQUEST V4 - ECE Online Exam Platform              ║
+║     Architecture: Token-based, Zero Personal Data            ║
 ║                                                              ║
 ║     Server running on:                                       ║
 ║     → Local:   http://localhost:${PORT}                        ║
 ║     → Network: http://<YOUR_IP>:${PORT}                        ║
 ║                                                              ║
 ║     Admin Panel: http://localhost:${PORT}/admin                ║
+║     Exam:        http://localhost:${PORT}/exam                 ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     `);

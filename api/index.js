@@ -1,11 +1,12 @@
 /**
- * Vercel Serverless Entry Point
+ * Vercel Serverless Entry Point — V4 Architecture
  * Quiz Conquest - ECE Professional Online Exam Platform
- * 
- * FIXED:
- * - CORS origin properly configured for Vercel frontend
- * - trust proxy for session cookies over HTTPS
- * - Proper error handling
+ *
+ * ARCHITECTURE:
+ *   • Admin routes: session-based (login/logout/round control)
+ *   • Participant/exam routes: NO sessions, NO auth
+ *   • All participant identification via attempt_token (UUID)
+ *   • No personal data storage
  */
 
 require('dotenv').config();
@@ -24,19 +25,17 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false 
 
 // CORS - Allow the Vercel frontend origin with credentials
 const allowedOrigins = [
-    process.env.FRONTEND_URL,                         // e.g. https://your-app.vercel.app
+    process.env.FRONTEND_URL,
     'http://localhost:3000',
     'http://127.0.0.1:3000'
 ].filter(Boolean);
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (server-side, curl, etc.)
         if (!origin) return callback(null, true);
         if (allowedOrigins.some(o => origin === o || origin.endsWith('.vercel.app'))) {
             return callback(null, true);
         }
-        // In production, still allow for same-origin requests
         return callback(null, true);
     },
     credentials: true
@@ -53,20 +52,29 @@ const questionRoutes = require(path.resolve(__dirname, 'routes/questions'));
 const participantRoutes = require(path.resolve(__dirname, 'routes/participant'));
 const uploadRoutes = require(path.resolve(__dirname, 'routes/upload'));
 
-// Session middleware
+// Session middleware (only needed for admin panel)
 app.use(session(sessionConfig));
 
-// API Routes
+// ──── API Routes ────────────────────────────────────────────
+
+// Admin routes (session-based auth)
 app.use('/api/admin', adminRoutes);
+
+// Question management (admin-only)
 app.use('/api/questions', questionRoutes);
-app.use('/api/participant', participantRoutes);
+
+// File upload (admin-only)
 app.use('/api/upload', uploadRoutes);
+
+// Participant/exam routes (NO sessions, NO auth)
+app.use('/api/exam', participantRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
-        message: 'Quiz Conquest API is running',
+        message: 'Quiz Conquest V4 API is running',
+        version: '4.0.0',
         timestamp: new Date().toISOString(),
         env: {
             hasUrl: !!process.env.SUPABASE_URL,

@@ -236,6 +236,25 @@
         .screen.active {
             display: flex;
         }
+
+        /* Success checkmark animation */
+        .completion-icon {
+            animation: successPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes successPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.9;
+            }
+        }
     </style>
 </head>
 
@@ -340,6 +359,7 @@
 
     <!-- 3D Canvas Container -->
     <div id="canvas-container"></div>
+
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="logo">
@@ -361,15 +381,6 @@
         <button class="btn btn-danger btn-lg" id="dismissWarning">Continue Exam</button>
     </div>
 
-    <!-- Not Logged In Screen -->
-    <div class="screen waiting-screen" id="notLoggedIn">
-        <div class="waiting-animation"></div>
-        <h1 class="waiting-title">Session Expired</h1>
-        <p class="waiting-message">Your session has expired or you are not logged in. Please login again to continue.
-        </p>
-        <a href="/" class="btn btn-primary btn-lg" style="margin-top: var(--space-xl);">Go to Login</a>
-    </div>
-
     <!-- Waiting Screen -->
     <div class="screen waiting-screen" id="waitingScreen">
         <div class="waiting-animation"></div>
@@ -378,29 +389,10 @@
             Please wait. The coordinator will start the round shortly.
             Do not close this window.
         </p>
-        <div id="participantInfoDisplay" style="margin-top: var(--space-xl); color: var(--text-muted);">
-            <p>Logged in as: <span id="displayName">-</span></p>
-            <p>System ID: <span id="displaySystemId">-</span></p>
+        <div id="tokenDisplay" style="margin-top: var(--space-xl); color: var(--text-muted);">
+            <p>Your Token: <span id="displayToken"
+                    style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">-</span></p>
         </div>
-    </div>
-
-    <!-- Not Qualified Screen -->
-    <div class="screen waiting-screen" id="notQualifiedScreen">
-        <div style="font-size: 5rem; margin-bottom: var(--space-xl);">😔</div>
-        <h1 class="waiting-title">Not Qualified</h1>
-        <p class="waiting-message">
-            Unfortunately, you did not qualify for the next round.
-            Thank you for participating in Quiz Conquest!
-        </p>
-    </div>
-
-    <!-- Disqualified Screen -->
-    <div class="screen waiting-screen" id="disqualifiedScreen">
-        <div style="font-size: 5rem; margin-bottom: var(--space-xl);">🚫</div>
-        <h1 class="waiting-title text-danger">Disqualified</h1>
-        <p class="waiting-message" id="disqualificationReason">
-            You have been disqualified from the examination.
-        </p>
     </div>
 
     <!-- Exam Screen -->
@@ -408,7 +400,6 @@
         <header class="exam-header">
             <div class="exam-header-content">
                 <div class="exam-info">
-                    <!-- Logo Removed -->
                     <span class="exam-round-badge" id="roundBadge">Round 1</span>
                 </div>
                 <div class="exam-timer" id="examTimer">
@@ -416,9 +407,9 @@
                     <span id="timerDisplay">15:00</span>
                 </div>
                 <div class="participant-info">
-                    <span>👤</span>
-                    <span id="headerName">Participant</span>
-                    <span class="badge badge-neutral" id="headerSystemId">QC-00000</span>
+                    <span>🔑</span>
+                    <span class="badge badge-neutral" id="headerToken"
+                        style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Token</span>
                 </div>
             </div>
         </header>
@@ -429,7 +420,8 @@
                     <!-- Progress -->
                     <div class="exam-progress">
                         <div class="exam-progress-info">
-                            <span>Question <span id="currentQuestionNum">1</span> of 15</span>
+                            <span>Question <span id="currentQuestionNum">1</span> of <span
+                                    id="totalQuestions">15</span></span>
                             <span><span id="answeredCount">0</span> answered</span>
                         </div>
                         <div class="progress-bar">
@@ -473,38 +465,81 @@
 
     <script>
         /**
-         * Quiz Conquest - Exam Page
-         * Strict exam mode with server-authoritative timer
+         * Quiz Conquest — Exam Page (V4 Architecture)
+         *
+         * ARCHITECTURE:
+         *   • No login/registration — token generated on page load
+         *   • attempt_token (UUID) stored in localStorage
+         *   • All questions loaded in single API call
+         *   • Answers stored in memory — no per-question API calls
+         *   • Single bulk submission at end
+         *   • Fully idempotent submission (duplicate = success)
+         *   • NEVER shows "Failed to submit" — immediate success UI
+         *   • Auto-retry on network failure
+         *   • Checks submission status endpoint as final fallback
          */
         (function () {
             'use strict';
 
-            // State
+            // ─── UUID Generator ─────────────────────────────────
+            function generateUUID() {
+                if (crypto.randomUUID) return crypto.randomUUID();
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
+
+            // ─── Attempt Token Management ───────────────────────
+            // Generate or retrieve existing attempt_token from localStorage
+            function getOrCreateAttemptToken() {
+                const STORAGE_KEY = 'qc_attempt_token';
+                let token = localStorage.getItem(STORAGE_KEY);
+                if (!token) {
+                    token = generateUUID();
+                    localStorage.setItem(STORAGE_KEY, token);
+                }
+                return token;
+            }
+
+            // Clear token (called after round ends)
+            function clearAttemptToken() {
+                localStorage.removeItem('qc_attempt_token');
+                localStorage.removeItem('qc_submitted');
+                localStorage.removeItem('qc_round');
+            }
+
+            // ─── State ─────────────────────────────────────────
+            const attemptToken = getOrCreateAttemptToken();
+
             let state = {
-                participant: null,
                 currentRound: 0,
                 roundStatus: 'not_started',
                 roundEndsAt: null,
-                examSession: null,
-                currentQuestion: null,
-                currentQuestionNum: 1,  // MNC STYLE: Track current question number
+                currentQuestionNum: 1,
                 selectedOption: null,
                 isSubmitting: false,
+                isSubmitted: false,
                 timerInterval: null,
                 statusInterval: null,
                 tabSwitchCount: 0,
                 serverTimeOffset: 0,
-                // BULK SUBMISSION: Store all answers in memory (no per-question DB calls)
-                answers: {}  // { questionId: selectedOption }
+                totalQuestions: 15,
+                // BULK SUBMISSION: Store all answers in memory
+                answers: {},  // { questionId: selectedOption }
+                examStartTime: null
             };
 
-            // DOM Elements
+            // Check if already submitted
+            if (localStorage.getItem('qc_submitted') === 'true') {
+                state.isSubmitted = true;
+            }
+
+            // ─── DOM Elements ───────────────────────────────────
             const screens = {
                 loading: document.getElementById('loadingScreen'),
-                notLoggedIn: document.getElementById('notLoggedIn'),
                 waiting: document.getElementById('waitingScreen'),
-                notQualified: document.getElementById('notQualifiedScreen'),
-                disqualified: document.getElementById('disqualifiedScreen'),
                 exam: document.getElementById('examScreen'),
                 completion: document.getElementById('completionScreen')
             };
@@ -516,14 +551,13 @@
                 dismissWarning: document.getElementById('dismissWarning'),
                 waitingTitle: document.getElementById('waitingTitle'),
                 waitingMessage: document.getElementById('waitingMessage'),
-                displayName: document.getElementById('displayName'),
-                displaySystemId: document.getElementById('displaySystemId'),
+                displayToken: document.getElementById('displayToken'),
                 roundBadge: document.getElementById('roundBadge'),
                 timerDisplay: document.getElementById('timerDisplay'),
                 examTimer: document.getElementById('examTimer'),
-                headerName: document.getElementById('headerName'),
-                headerSystemId: document.getElementById('headerSystemId'),
+                headerToken: document.getElementById('headerToken'),
                 currentQuestionNum: document.getElementById('currentQuestionNum'),
+                totalQuestions: document.getElementById('totalQuestions'),
                 answeredCount: document.getElementById('answeredCount'),
                 progressFill: document.getElementById('progressFill'),
                 questionLabel: document.getElementById('questionLabel'),
@@ -532,24 +566,26 @@
                 nextBtn: document.getElementById('nextBtn'),
                 nextBtnText: document.getElementById('nextBtnText'),
                 completionMessage: document.getElementById('completionMessage'),
-                submissionTime: document.getElementById('submissionTime'),
-                disqualificationReason: document.getElementById('disqualificationReason')
+                submissionTime: document.getElementById('submissionTime')
             };
 
-            // API Helper
+            // Display token
+            elements.displayToken.textContent = attemptToken.substring(0, 8) + '...';
+            elements.headerToken.textContent = attemptToken.substring(0, 8);
+
+            // ─── API Helper ─────────────────────────────────────
             async function api(endpoint, options = {}) {
                 const response = await fetch(endpoint, {
                     ...options,
                     headers: {
                         'Content-Type': 'application/json',
                         ...options.headers
-                    },
-                    credentials: 'include'
+                    }
                 });
                 return response.json();
             }
 
-            // Show specific screen
+            // ─── Show specific screen ───────────────────────────
             function showScreen(screenName) {
                 Object.values(screens).forEach(screen => {
                     screen.classList.remove('active');
@@ -558,11 +594,11 @@
 
                 if (screens[screenName]) {
                     screens[screenName].classList.add('active');
-                    screens[screenName].style.display = screenName === 'exam' ? 'flex' : 'flex';
+                    screens[screenName].style.display = 'flex';
                 }
             }
 
-            // Sync server time
+            // ─── Sync server time ───────────────────────────────
             async function syncServerTime() {
                 try {
                     const start = Date.now();
@@ -579,12 +615,11 @@
                 }
             }
 
-            // Get corrected current time
             function getServerTime() {
                 return Date.now() + state.serverTimeOffset;
             }
 
-            // Format time as MM:SS
+            // ─── Format time ────────────────────────────────────
             function formatTime(seconds) {
                 if (seconds < 0) seconds = 0;
                 const mins = Math.floor(seconds / 60);
@@ -592,7 +627,7 @@
                 return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }
 
-            // Update timer display
+            // ─── Update timer display ───────────────────────────
             function updateTimer() {
                 if (!state.roundEndsAt) return;
 
@@ -614,9 +649,9 @@
                 }
 
                 // Auto-submit when time expires
-                if (remaining <= 0 && !state.isSubmitting) {
+                if (remaining <= 0 && !state.isSubmitting && !state.isSubmitted) {
                     clearInterval(state.timerInterval);
-                    // CRITICAL: Save current answer before auto-submit
+                    // Save current answer before auto-submit
                     if (state.currentQuestion?.questionId && state.selectedOption) {
                         state.answers[state.currentQuestion.questionId] = state.selectedOption;
                     }
@@ -624,7 +659,7 @@
                 }
             }
 
-            // Start timer
+            // ─── Start timer ────────────────────────────────────
             function startTimer() {
                 if (state.timerInterval) {
                     clearInterval(state.timerInterval);
@@ -633,59 +668,20 @@
                 state.timerInterval = setInterval(updateTimer, 1000);
             }
 
-            // Check session and status
-            async function checkSession() {
-                try {
-                    const result = await api('/api/participant/session');
-
-                    if (!result.success || !result.authenticated) {
-                        showScreen('notLoggedIn');
-                        return;
-                    }
-
-                    state.participant = {
-                        systemId: result.data.systemId,
-                        name: result.data.name
-                    };
-
-                    // Update UI with participant info
-                    elements.displayName.textContent = result.data.name;
-                    elements.displaySystemId.textContent = result.data.systemId;
-                    elements.headerName.textContent = result.data.name;
-                    elements.headerSystemId.textContent = result.data.systemId;
-
-                    // Check qualification status
-                    if (result.data.isDisqualified) {
-                        elements.disqualificationReason.textContent =
-                            result.data.disqualificationReason || 'You have been disqualified from the examination.';
-                        showScreen('disqualified');
-                        return;
-                    }
-
-                    // Handle exam session if exists and submitted
-                    if (result.data.examSession && result.data.examSession.isSubmitted) {
-                        showScreen('completion');
-                        elements.completionMessage.textContent =
-                            'Your answers have been submitted. Please wait for the results.';
-                        return;
-                    }
-
-                    // Initial status check
-                    await checkStatus();
-
-                } catch (error) {
-                    console.error('Session check error:', error);
-                    showScreen('notLoggedIn');
-                }
-            }
-
-            // Check current status
+            // ─── Check status ───────────────────────────────────
             async function checkStatus() {
                 try {
-                    const result = await api('/api/participant/status');
+                    // If already submitted, show completion
+                    if (state.isSubmitted) {
+                        showScreen('completion');
+                        stopStatusPolling();
+                        return;
+                    }
+
+                    const result = await api('/api/exam/status');
 
                     if (!result.success) {
-                        console.error('Status check failed:', result.message);
+                        console.error('Status check failed');
                         return;
                     }
 
@@ -694,36 +690,24 @@
                     state.roundStatus = data.roundStatus;
                     state.roundEndsAt = data.roundEndsAt;
 
-                    // Check if not qualified
-                    if (!data.canParticipate && data.currentRound > 0 && !data.isQualified) {
-                        showScreen('notQualified');
-                        stopStatusPolling();
-                        return;
-                    }
-
                     // Handle different states
-                    if (data.roundStatus === 'running' && data.canParticipate) {
-                        // Check if already submitted
-                        if (data.examSession && data.examSession.isSubmitted) {
-                            showScreen('completion');
-                            stopStatusPolling();
+                    if (data.roundStatus === 'running' && data.eventActive) {
+                        // Check if we already submitted for this round
+                        const storedRound = localStorage.getItem('qc_round');
+                        if (storedRound && parseInt(storedRound) !== data.currentRound) {
+                            // New round — clear old data
+                            clearAttemptToken();
+                            location.reload();
                             return;
                         }
 
-                        // Start or resume exam
-                        if (!data.examSession) {
-                            await startExam();
-                        } else {
-                            state.examSession = data.examSession;
-                            state.tabSwitchCount = data.examSession.tabSwitchCount || 0;
-                            await loadQuestion(data.examSession.currentQuestion);
-                            showScreen('exam');
-                            startTimer();
-                        }
+                        // Load questions and start exam
+                        await startExam(data.currentRound);
                         stopStatusPolling();
-                    } else if (data.roundStatus === 'completed' && data.examSession && data.examSession.isSubmitted) {
-                        showScreen('completion');
-                        stopStatusPolling();
+                    } else if (data.roundStatus === 'completed') {
+                        // Check if we have results
+                        updateWaitingScreen(data);
+                        showScreen('waiting');
                     } else {
                         // Waiting for round to start
                         updateWaitingScreen(data);
@@ -735,9 +719,13 @@
                 }
             }
 
-            // Update waiting screen
+            // ─── Update waiting screen ──────────────────────────
             function updateWaitingScreen(data) {
-                if (data.currentRound === 0) {
+                if (!data.eventActive) {
+                    elements.waitingTitle.textContent = 'Event Not Active';
+                    elements.waitingMessage.textContent =
+                        'The examination event has not started yet. Please wait for the coordinator.';
+                } else if (data.currentRound === 0) {
                     elements.waitingTitle.textContent = 'Event Starting Soon';
                     elements.waitingMessage.textContent =
                         'The event has been activated. Please wait for Round 1 to begin.';
@@ -752,7 +740,7 @@
                 }
             }
 
-            // Start status polling
+            // ─── Status Polling ─────────────────────────────────
             function startStatusPolling() {
                 if (state.statusInterval) {
                     clearInterval(state.statusInterval);
@@ -760,7 +748,6 @@
                 state.statusInterval = setInterval(checkStatus, 3000);
             }
 
-            // Stop status polling
             function stopStatusPolling() {
                 if (state.statusInterval) {
                     clearInterval(state.statusInterval);
@@ -768,30 +755,41 @@
                 }
             }
 
-            // Start exam - MNC STYLE: Load ALL questions at once
-            async function startExam() {
-                try {
-                    const result = await api('/api/participant/start-exam', {
-                        method: 'POST'
-                    });
+            // ─── All questions stored in memory ─────────────────
+            let allQuestions = [];
 
-                    if (!result.success) {
-                        console.error('Start exam failed:', result.message);
-                        return;
+            // ─── Start exam — Load ALL questions at once ────────
+            async function startExam(roundNumber) {
+                try {
+                    const result = await api('/api/exam/questions');
+
+                    if (!result.success || !result.data.questions || result.data.questions.length === 0) {
+                        console.error('Failed to load questions');
+                        // Retry once
+                        await new Promise(r => setTimeout(r, 1000));
+                        const retry = await api('/api/exam/questions');
+                        if (retry.success && retry.data.questions) {
+                            allQuestions = retry.data.questions;
+                        } else {
+                            elements.waitingTitle.textContent = 'Loading Questions...';
+                            elements.waitingMessage.textContent = 'Questions are being loaded. Please wait.';
+                            showScreen('waiting');
+                            startStatusPolling();
+                            return;
+                        }
+                    } else {
+                        allQuestions = result.data.questions;
                     }
 
-                    state.examSession = {
-                        sessionId: result.data.sessionId,
-                        currentQuestion: result.data.currentQuestion
-                    };
-                    state.roundEndsAt = result.data.roundEndsAt;
-                    state.tabSwitchCount = result.data.tabSwitchCount || 0;
-                    state.currentQuestionNum = 1;
+                    state.totalQuestions = allQuestions.length;
+                    state.roundEndsAt = result.data?.roundEndsAt;
+                    state.currentRound = roundNumber;
+                    state.examStartTime = Date.now();
+                    localStorage.setItem('qc_round', roundNumber.toString());
 
-                    elements.roundBadge.textContent = `Round ${result.data.roundNumber}`;
-
-                    // MNC STYLE: Load ALL questions at once (single API call)
-                    await loadAllQuestions();
+                    // Update UI
+                    elements.roundBadge.textContent = `Round ${roundNumber}`;
+                    elements.totalQuestions.textContent = state.totalQuestions;
 
                     // Display first question
                     displayQuestion(1);
@@ -800,47 +798,15 @@
 
                 } catch (error) {
                     console.error('Start exam error:', error);
+                    // Keep waiting
+                    startStatusPolling();
                 }
             }
 
-            // All questions stored in memory (MNC style)
-            let allQuestions = [];
-
-            // Load ALL questions at once (single API call)
-            async function loadAllQuestions() {
-                try {
-                    const result = await api('/api/participant/all-questions');
-                    if (result.success && result.data.questions) {
-                        allQuestions = result.data.questions;
-                    } else {
-                        console.error('Failed to load questions:', result.message);
-                        // Retry once after 1 second
-                        await new Promise(r => setTimeout(r, 1000));
-                        const retry = await api('/api/participant/all-questions');
-                        if (retry.success && retry.data.questions) {
-                            allQuestions = retry.data.questions;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Load all questions error:', error);
-                    // Retry once
-                    try {
-                        await new Promise(r => setTimeout(r, 1000));
-                        const retry = await api('/api/participant/all-questions');
-                        if (retry.success && retry.data.questions) {
-                            allQuestions = retry.data.questions;
-                        }
-                    } catch (e) {
-                        console.error('Retry also failed:', e);
-                    }
-                }
-            }
-
-            // Display question (INSTANT - no network call)
+            // ─── Display question (INSTANT — no network call) ───
             function displayQuestion(questionNumber) {
                 const question = allQuestions.find(q => q.questionNumber === questionNumber);
                 if (!question) {
-                    // Show error if questions not loaded
                     if (allQuestions.length === 0) {
                         elements.questionText.textContent = 'Failed to load questions. Please refresh the page.';
                     }
@@ -857,11 +823,11 @@
                 elements.currentQuestionNum.textContent = questionNumber;
                 elements.questionLabel.textContent = `Question ${questionNumber}`;
                 elements.questionText.textContent = question.questionText;
-                elements.progressFill.style.width = `${((questionNumber - 1) / 15) * 100}%`;
+                elements.progressFill.style.width = `${((questionNumber - 1) / state.totalQuestions) * 100}%`;
                 elements.answeredCount.textContent = Object.keys(state.answers).length;
 
                 // Update button text
-                if (questionNumber >= 15) {
+                if (questionNumber >= state.totalQuestions) {
                     elements.nextBtnText.textContent = 'Submit Exam';
                 } else {
                     elements.nextBtnText.textContent = 'Next Question';
@@ -871,12 +837,7 @@
                 renderOptions(question.options, state.selectedOption);
             }
 
-            // For backward compatibility
-            async function loadQuestion(questionNumber) {
-                displayQuestion(questionNumber);
-            }
-
-            // Render options
+            // ─── Render options ─────────────────────────────────
             function renderOptions(options, selectedOption) {
                 elements.optionsList.innerHTML = '';
 
@@ -912,12 +873,12 @@
                 });
             }
 
-            // Submit answer and go to next question (INSTANT - MNC STYLE)
+            // ─── Submit answer and go to next (INSTANT) ─────────
             function submitAnswer() {
-                if (state.isSubmitting) return;
+                if (state.isSubmitting || state.isSubmitted) return;
 
                 const currentNum = state.currentQuestionNum;
-                const isLastQuestion = currentNum >= 15;
+                const isLastQuestion = currentNum >= state.totalQuestions;
                 const savedQuestionId = state.currentQuestion?.questionId;
                 const savedOption = state.selectedOption;
 
@@ -927,8 +888,7 @@
                 }
 
                 if (isLastQuestion) {
-                    // Last question - submit ALL answers
-                    // Don't set isSubmitting here, let submitExam handle it to avoid early return check
+                    // Last question — submit ALL answers
                     elements.nextBtn.disabled = true;
                     submitExam('manual');
                 } else {
@@ -937,140 +897,195 @@
                 }
             }
 
-            // Submit exam with ALL answers (BULK SUBMISSION)
+            // ─── Submit exam with ALL answers (BULK SUBMISSION) ─
             let submitRetryCount = 0;
             const MAX_SUBMIT_RETRIES = 3;
 
             async function submitExam(submissionType = 'manual') {
+                // Guard: only one submission at a time
                 if (state.isSubmitting && submissionType === 'manual') return;
+                if (state.isSubmitted) {
+                    showScreen('completion');
+                    return;
+                }
+
                 state.isSubmitting = true;
                 elements.nextBtn.disabled = true;
 
+                // Calculate time taken
+                const timeTaken = state.examStartTime
+                    ? Math.floor((Date.now() - state.examStartTime) / 1000)
+                    : 0;
+
                 try {
-                    // Convert answers object to array format for bulk insert
+                    // Convert answers object to array format
                     const answersArray = Object.entries(state.answers).map(([questionId, selectedOption]) => ({
                         question_id: questionId,
                         selected_option: selectedOption
                     }));
 
-                    // SINGLE API CALL with ALL answers
-                    const result = await api('/api/participant/submit-exam', {
+                    // ──────────────────────────────────────────────
+                    // IMMEDIATELY show success UI
+                    // This is the "No Failure Message" policy
+                    // ──────────────────────────────────────────────
+                    state.isSubmitted = true;
+                    localStorage.setItem('qc_submitted', 'true');
+                    clearInterval(state.timerInterval);
+                    showScreen('completion');
+
+                    if (submissionType === 'auto_timer') {
+                        elements.completionMessage.textContent =
+                            'Time\'s up! Your answers have been automatically submitted.';
+                    } else {
+                        elements.completionMessage.textContent =
+                            'Your answers have been successfully submitted. Please wait for the results.';
+                    }
+                    elements.submissionTime.textContent = new Date().toLocaleTimeString();
+
+                    // ──────────────────────────────────────────────
+                    // Send to backend (fire-and-forget with retry)
+                    // UI already shows success — this is best-effort
+                    // ──────────────────────────────────────────────
+                    const result = await api('/api/exam/submit', {
                         method: 'POST',
                         body: JSON.stringify({
-                            submissionType,
-                            answers: answersArray  // All answers in one request
+                            attempt_token: attemptToken,
+                            round_number: state.currentRound,
+                            answers: answersArray,
+                            time_taken_seconds: timeTaken
                         })
                     });
 
                     if (result.success) {
-                        submitRetryCount = 0; // Reset on success
-                        clearInterval(state.timerInterval);
-                        showScreen('completion');
-
-                        if (submissionType === 'auto_timer') {
-                            elements.completionMessage.textContent =
-                                'Time\'s up! Your answers have been automatically submitted.';
-                        } else if (submissionType === 'auto_violation') {
-                            elements.completionMessage.textContent =
-                                'Due to policy violations, your exam has been submitted.';
-                        } else {
-                            elements.completionMessage.textContent =
-                                'Your answers have been successfully submitted. Please wait for the results.';
-                        }
-
-                        elements.submissionTime.textContent = new Date().toLocaleTimeString();
+                        submitRetryCount = 0;
+                        console.log('✅ Submission confirmed by server');
                     } else {
-                        throw new Error(result.message || 'Submission failed');
+                        throw new Error('Server returned non-success');
                     }
 
                 } catch (error) {
-                    console.error('Submit exam error:', error);
+                    console.error('Submit error (retrying):', error);
                     submitRetryCount++;
 
                     if (submitRetryCount < MAX_SUBMIT_RETRIES) {
-                        // Retry with exponential backoff
-                        setTimeout(() => submitExam(submissionType), 1000 * submitRetryCount);
+                        // Retry in background — UI already shows success
+                        setTimeout(() => retrySubmission(submissionType), 1000 * submitRetryCount);
                     } else {
-                        // Max retries exceeded - show error
-                        elements.completionMessage.textContent =
-                            'Failed to submit exam. Please check your internet connection and refresh the page.';
-                        showScreen('completion');
+                        // Check submission status as fallback
+                        checkSubmissionStatus();
                     }
                 } finally {
                     state.isSubmitting = false;
                 }
             }
 
-            // Handle tab switch/visibility change (STRICT CBT)
-            // 1st switch → warning (logged)
-            // 2nd switch → auto-submit + disqualify (permanent)
-            async function handleVisibilityChange() {
-                if (document.hidden && screens.exam.classList.contains('active') && !state.isSubmitting) {
-                    // Save current answer to state before reporting
-                    if (state.currentQuestion?.questionId && state.selectedOption) {
-                        state.answers[state.currentQuestion.questionId] = state.selectedOption;
+            // ─── Retry submission in background ─────────────────
+            async function retrySubmission(submissionType) {
+                try {
+                    const timeTaken = state.examStartTime
+                        ? Math.floor((Date.now() - state.examStartTime) / 1000)
+                        : 0;
+
+                    const answersArray = Object.entries(state.answers).map(([questionId, selectedOption]) => ({
+                        question_id: questionId,
+                        selected_option: selectedOption
+                    }));
+
+                    const result = await api('/api/exam/submit', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            attempt_token: attemptToken,
+                            round_number: state.currentRound,
+                            answers: answersArray,
+                            time_taken_seconds: timeTaken
+                        })
+                    });
+
+                    if (result.success) {
+                        submitRetryCount = 0;
+                        console.log('✅ Retry submission confirmed');
+                    } else {
+                        throw new Error('Retry non-success');
                     }
-
-                    try {
-                        // Always send answers (backend saves them on 2nd violation)
-                        const answersArray = Object.entries(state.answers).map(([questionId, selectedOption]) => ({
-                            question_id: questionId,
-                            selected_option: selectedOption
-                        }));
-
-                        const result = await api('/api/participant/tab-switch', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                violationType: 'visibility_change',
-                                answers: answersArray
-                            })
-                        });
-
-                        if (result.success && result.data) {
-                            state.tabSwitchCount = result.data.tabSwitchCount || 0;
-
-                            if (result.data.autoSubmitted && result.data.disqualified) {
-                                // ── 2ND SWITCH: DISQUALIFIED ──────────
-                                clearInterval(state.timerInterval);
-                                stopStatusPolling();
-                                elements.disqualificationReason.textContent =
-                                    'You have been disqualified for switching tabs/windows. ' +
-                                    'Your exam was auto-submitted. This decision is final unless overridden by an administrator.';
-                                showScreen('disqualified');
-                            } else if (result.data.warning) {
-                                // ── 1ST SWITCH: WARNING ───────────────
-                                elements.warningText.textContent =
-                                    '⚠️ CRITICAL WARNING: You switched tabs or windows during the exam. ' +
-                                    'This is your FIRST and ONLY warning. ' +
-                                    'If you switch again, your exam will be auto-submitted and you will be DISQUALIFIED.';
-                                elements.warningCount.textContent = `Violations: ${state.tabSwitchCount} / 2 (next = disqualification)`;
-                                elements.warningOverlay.classList.remove('hidden');
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Tab switch report error:', error);
+                } catch (error) {
+                    submitRetryCount++;
+                    if (submitRetryCount < MAX_SUBMIT_RETRIES) {
+                        setTimeout(() => retrySubmission(submissionType), 1000 * submitRetryCount);
+                    } else {
+                        checkSubmissionStatus();
                     }
                 }
             }
 
-            // Handle page refresh attempt
+            // ─── Check submission status (final fallback) ───────
+            async function checkSubmissionStatus() {
+                try {
+                    const result = await api(`/api/exam/submission-status/${attemptToken}`);
+                    if (result.submitted) {
+                        console.log('✅ Submission verified via status check');
+                    } else {
+                        console.warn('⚠ Submission may not have been recorded. Retrying one last time.');
+                        // One final retry
+                        retrySubmission('fallback');
+                    }
+                } catch (error) {
+                    console.error('Status check failed:', error);
+                    // UI already shows success — don't panic
+                }
+            }
+
+            // ─── Handle tab switch/visibility change ────────────
+            function handleVisibilityChange() {
+                if (document.hidden && screens.exam.classList.contains('active') && !state.isSubmitting && !state.isSubmitted) {
+                    state.tabSwitchCount++;
+
+                    // Save current answer
+                    if (state.currentQuestion?.questionId && state.selectedOption) {
+                        state.answers[state.currentQuestion.questionId] = state.selectedOption;
+                    }
+
+                    if (state.tabSwitchCount >= 2) {
+                        // 2nd+ switch → auto-submit
+                        submitExam('auto_violation');
+                    } else {
+                        // 1st switch → warning
+                        elements.warningText.textContent =
+                            '⚠️ CRITICAL WARNING: You switched tabs or windows during the exam. ' +
+                            'This is your FIRST and ONLY warning. ' +
+                            'If you switch again, your exam will be auto-submitted.';
+                        elements.warningCount.textContent = `Violations: ${state.tabSwitchCount} / 2 (next = auto-submit)`;
+                        elements.warningOverlay.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // ─── Handle page refresh attempt ────────────────────
             function handleBeforeUnload(e) {
-                if (screens.exam.classList.contains('active') && !state.isSubmitting) {
+                if (screens.exam.classList.contains('active') && !state.isSubmitted) {
                     e.preventDefault();
                     e.returnValue = 'Your exam is in progress. Are you sure you want to leave?';
                     return e.returnValue;
                 }
             }
 
-            // Dismiss warning
+            // ─── Dismiss warning ────────────────────────────────
             function dismissWarning() {
                 elements.warningOverlay.classList.add('hidden');
             }
 
-            // Initialize
+            // ─── Initialize ─────────────────────────────────────
             async function init() {
                 await syncServerTime();
-                await checkSession();
+
+                // If already submitted, show completion immediately
+                if (state.isSubmitted) {
+                    showScreen('completion');
+                    elements.completionMessage.textContent =
+                        'Your answers have been submitted. Please wait for the results.';
+                    return;
+                }
+
+                await checkStatus();
                 startStatusPolling();
 
                 // Event listeners
@@ -1089,7 +1104,6 @@
                 // Prevent keyboard shortcuts
                 document.addEventListener('keydown', (e) => {
                     if (screens.exam.classList.contains('active')) {
-                        // Prevent Ctrl+C, Ctrl+V, Ctrl+A, F12
                         if ((e.ctrlKey && ['c', 'v', 'a', 'u'].includes(e.key.toLowerCase())) ||
                             e.key === 'F12') {
                             e.preventDefault();
@@ -1112,16 +1126,13 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const scene = new THREE.Scene();
-            // Deep dark blue-black background
             scene.background = new THREE.Color(0x050a14);
             scene.fog = new THREE.FogExp2(0x050a14, 0.02);
 
-            // Isometric Camera Setup
             const aspect = window.innerWidth / window.innerHeight;
             const d = 20;
             const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
 
-            // Isometric Angle
             camera.position.set(20, 20, 20);
             camera.lookAt(scene.position);
 
@@ -1132,7 +1143,6 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
-            // --- LIGHTING ---
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambientLight);
 
@@ -1151,11 +1161,9 @@
             cyanLight.position.set(5, 5, 5);
             scene.add(cyanLight);
 
-            // --- PLATFORM GROUP ---
             const platformGroup = new THREE.Group();
             scene.add(platformGroup);
 
-            // Helper to create rounded box shape
             function createRoundedBoxShape(width, height, radius) {
                 const shape = new THREE.Shape();
                 const x = -width / 2;
@@ -1174,8 +1182,6 @@
                 return shape;
             }
 
-            // 1. Base Layer (The LED Matrix Block) - Using Blue/Cyan style
-            // We use an ExtrudeGeometry for thickness
             const baseSize = 12;
             const baseShape = createRoundedBoxShape(baseSize, baseSize, 1);
             const baseGeometry = new THREE.ExtrudeGeometry(baseShape, {
@@ -1185,22 +1191,19 @@
                 bevelSize: 0.1,
                 bevelThickness: 0.1
             });
-            // Rotate to lay flat
             baseGeometry.rotateX(Math.PI / 2);
 
-            // Texture for LED matrix look
             const ledCanvas = document.createElement('canvas');
-            ledCanvas.width = 128; // Increased resolution
+            ledCanvas.width = 128;
             ledCanvas.height = 128;
             const ctx = ledCanvas.getContext('2d');
             ctx.fillStyle = '#001133';
             ctx.fillRect(0, 0, 128, 128);
-            ctx.fillStyle = '#00ccff'; // Cyan dots
+            ctx.fillStyle = '#00ccff';
 
-            // Create grid pattern
             for (let i = 0; i < 128; i += 8) {
                 for (let j = 0; j < 128; j += 8) {
-                    if ((i + j) % 16 === 0) { // Checkered/dotted pattern
+                    if ((i + j) % 16 === 0) {
                         ctx.beginPath();
                         ctx.arc(i + 4, j + 4, 2, 0, Math.PI * 2);
                         ctx.fill();
@@ -1213,22 +1216,18 @@
             ledTexture.minFilter = THREE.NearestFilter;
             ledTexture.magFilter = THREE.NearestFilter;
 
-            // Emissive material for the sides to look like the glowing yellow block in reference, but BLUE
             const baseMaterial = new THREE.MeshStandardMaterial({
                 color: 0x000000,
-                emissive: 0x0044aa, // Deep blue glow
+                emissive: 0x0044aa,
                 emissiveMap: ledTexture,
                 emissiveIntensity: 2.0,
                 roughness: 0.4,
                 metalness: 0.8
             });
-            // Top/Bottom faces can be darker
             const baseMesh = new THREE.Mesh(baseGeometry, [baseMaterial, baseMaterial]);
             baseMesh.position.y = -2;
             platformGroup.add(baseMesh);
 
-
-            // 2. Middle Metallic Layer
             const midShape = createRoundedBoxShape(baseSize - 0.5, baseSize - 0.5, 0.8);
             const midGeometry = new THREE.ExtrudeGeometry(midShape, {
                 depth: 0.5,
@@ -1246,7 +1245,6 @@
             midMesh.position.y = -0.5;
             platformGroup.add(midMesh);
 
-            // 3. Top Glass Layer
             const glassShape = createRoundedBoxShape(baseSize - 1, baseSize - 1, 0.6);
             const glassGeometry = new THREE.ExtrudeGeometry(glassShape, {
                 depth: 0.2,
@@ -1259,7 +1257,7 @@
                 color: 0x000000,
                 metalness: 0.1,
                 roughness: 0.1,
-                transmission: 0.9, // Glass-like transmission
+                transmission: 0.9,
                 opacity: 0.8,
                 transparent: true,
                 clearcoat: 1.0,
@@ -1269,26 +1267,14 @@
             glassMesh.position.y = 0.2;
             platformGroup.add(glassMesh);
 
-            // 4. Glowing Border for Top Layer (Neon effect)
-            const borderGeometry = new THREE.BufferGeometry();
-            const borderPoints = [];
-            // Create path points following the rounded rect shape roughly
-            const w = (baseSize - 1) / 2;
-            const r = 0.6;
-            // Simplified border path
-            const curve = new THREE.EllipseCurve(0, 0, w, w, 0, 2 * Math.PI, false, 0);
-            // This is a circle, let's approximate the rounded square with points manually or shape.getPoints
             const shapePoints = glassShape.getPoints(50);
             const borderGeo = new THREE.BufferGeometry().setFromPoints(shapePoints);
-            // Rotate to match
             borderGeo.rotateX(Math.PI / 2);
             const borderMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
             const borderMesh = new THREE.LineLoop(borderGeo, borderMat);
-            borderMesh.position.y = 0.42; // Just above glass
+            borderMesh.position.y = 0.42;
             platformGroup.add(borderMesh);
 
-
-            // 5. Floating Elements (Icons/Particles)
             const particlesGroup = new THREE.Group();
             platformGroup.add(particlesGroup);
 
@@ -1308,7 +1294,6 @@
                 particlesGroup.add(mesh);
             }
 
-            // 6. Central Hologram/Logo placeholder (Triangle/Cursor shape from reference)
             const cursorShape = new THREE.Shape();
             cursorShape.moveTo(0, 2);
             cursorShape.lineTo(1.5, -2);
@@ -1317,8 +1302,8 @@
             cursorShape.lineTo(0, 2);
 
             const cursorGeo = new THREE.ExtrudeGeometry(cursorShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1 });
-            cursorGeo.rotateX(Math.PI / 2); // Make it stand up? No, float flat or tilted
-            cursorGeo.rotateX(-Math.PI / 4); // Tilt up a bit
+            cursorGeo.rotateX(Math.PI / 2);
+            cursorGeo.rotateX(-Math.PI / 4);
 
             const cursorMat = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
@@ -1331,29 +1316,24 @@
             cursorMesh.position.set(0, 1.5, 0);
             platformGroup.add(cursorMesh);
 
-            // Animation Loop
             let time = 0;
             function animate() {
                 requestAnimationFrame(animate);
                 time += 0.02;
 
-                // Gentle platform float
                 platformGroup.position.y = Math.sin(time * 0.5) * 0.2;
 
-                // Rotate particles
                 particlesGroup.rotation.y = time * 0.2;
                 particlesGroup.children.forEach(p => {
                     p.position.y += Math.sin(time + p.userData.offset) * 0.02;
                 });
 
-                // Animate cursor
                 cursorMesh.rotation.y = Math.sin(time * 1.5) * 0.2;
                 cursorMesh.position.y = 1.5 + Math.sin(time * 2) * 0.3;
 
                 renderer.render(scene, camera);
             }
 
-            // Resize Handler
             window.addEventListener('resize', () => {
                 const aspect = window.innerWidth / window.innerHeight;
                 camera.left = -d * aspect;
