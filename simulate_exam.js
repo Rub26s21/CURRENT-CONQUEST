@@ -1,11 +1,11 @@
+require('dotenv').config();
 const http = require('http');
 const https = require('https');
-const url = require('url');
 
 // UUID Generator (RFC4122 version 4 compliant)
 function uuidv4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 }
@@ -14,7 +14,7 @@ function uuidv4() {
 async function request(method, path, body = null, headers = {}) {
     return new Promise((resolve, reject) => {
         const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-        const parsedUrl = url.parse(baseUrl);
+        const parsedUrl = new URL(baseUrl);
 
         const isHttps = parsedUrl.protocol === 'https:';
         const client = isHttps ? https : http;

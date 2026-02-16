@@ -357,17 +357,12 @@ router.post('/round/start', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /round/end — END ROUND (V4: uses finalize_round_v4)
+// POST /round/end — END ROUND (V4)
 //
-// Calls the SINGLE ATOMIC finalize_round_v4() database function.
+// ONLY marks the round as completed and stops accepting submissions.
+// Does NOT evaluate or rank answers.
+// Evaluation + ranking happens when admin clicks "Shortlist".
 // IDEMPOTENT: double calls are no-ops.
-// SEQUENCE:
-//   1. Lock round (idempotent guard)
-//   2. Evaluate all submissions (bulk)
-//   3. Rank results deterministically
-//   4. Shortlist top 25
-//   5. Update event_state
-//   6. Return summary
 // ─────────────────────────────────────────────────────────────
 router.post('/round/end', requireAdmin, async (req, res) => {
     try {
@@ -384,42 +379,59 @@ router.post('/round/end', requireAdmin, async (req, res) => {
 
         const roundNumber = eventState.current_round;
 
-        // ── CALL ATOMIC finalize_round_v4() ───────────────────
-        const { data: result, error } = await supabase.rpc('finalize_round_v4', {
-            p_round_number: roundNumber
-        });
+        // Check if already completed (idempotent)
+        const { data: round } = await supabase
+            .from('rounds')
+            .select('status')
+            .eq('round_number', roundNumber)
+            .single();
 
-        if (error) {
-            console.error('finalize_round_v4 RPC error:', error);
-            throw error;
-        }
-
-        // Handle idempotent case
-        if (result?.already_completed) {
+        if (round && round.status === 'completed') {
             return res.json({
                 success: true,
-                message: `Round ${roundNumber} was already finalized`,
-                alreadyCompleted: true,
-                data: result
+                message: `Round ${roundNumber} was already ended`,
+                alreadyCompleted: true
             });
         }
 
-        // Mark shortlisting as completed
-        await supabase
+        const now = new Date().toISOString();
+
+        // Mark round as completed
+        const { error: roundError } = await supabase
             .from('rounds')
-            .update({ shortlisting_completed: true })
+            .update({ status: 'completed', ended_at: now })
+            .eq('round_number', roundNumber);
+        if (roundError) throw roundError;
+
+        // Update event state
+        const { error: eventError } = await supabase
+            .from('event_state')
+            .update({
+                round_status: 'completed',
+                updated_at: now
+            })
+            .eq('id', 1);
+        if (eventError) throw eventError;
+
+        // Count submissions for this round
+        const { count: submissionCount } = await supabase
+            .from('submissions')
+            .select('*', { count: 'exact', head: true })
             .eq('round_number', roundNumber);
 
         auditLog(null, req.admin.id, 'ROUND_ENDED',
-            `Round ${roundNumber} finalized — ` +
-            `${result.total_evaluated || 0} evaluated, ` +
-            `${result.qualified_count || 0} qualified`,
-            roundNumber, req, result);
+            `Round ${roundNumber} ended — ${submissionCount || 0} submissions collected. Awaiting shortlist.`,
+            roundNumber, req);
 
         res.json({
             success: true,
-            message: `Round ${roundNumber} ended successfully`,
-            data: result
+            message: `Round ${roundNumber} ended. ${submissionCount || 0} submissions collected. Click "Shortlist" to evaluate and rank.`,
+            data: {
+                roundNumber,
+                submissionCount: submissionCount || 0,
+                endedAt: now,
+                note: 'Answers will be evaluated when you click Shortlist'
+            }
         });
     } catch (error) {
         console.error('Round end error:', error);
