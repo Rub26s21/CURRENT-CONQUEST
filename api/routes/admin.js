@@ -525,6 +525,48 @@ router.get('/submissions/:roundNumber', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /audit-logs — Get audit logs
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// GET /participants — Get participants (V4: from submissions)
+// Maps submissions to participant-like structure for frontend compatibility
+// ─────────────────────────────────────────────────────────────
+router.get('/participants', requireAdmin, async (req, res) => {
+    try {
+        // Get all unique submissions
+        // In V4, we don't have persistent participants, so we show recent submissions
+        const { data: submissions, error } = await supabase
+            .from('submissions')
+            .select('*')
+            .order('submitted_at', { ascending: false })
+            .limit(100);
+
+        if (error) throw error;
+
+        // Map to frontend expected format
+        const participants = submissions.map(s => ({
+            id: s.id,
+            system_id: s.attempt_token, // Use token as ID
+            name: 'Anonymous Candidate', // V4: No personal data
+            college_name: 'Hidden',
+            phone_number: '-',
+            current_round: s.round_number,
+            is_qualified: false, // Calculated in results
+            is_disqualified: false,
+            created_at: s.submitted_at
+        }));
+
+        res.json({
+            success: true,
+            data: participants || []
+        });
+    } catch (error) {
+        console.error('Participants fetch error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch participants' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /audit-logs — Get audit logs
+// ─────────────────────────────────────────────────────────────
 router.get('/audit-logs', requireAdmin, async (req, res) => {
     try {
         const { data: logs, error } = await supabase

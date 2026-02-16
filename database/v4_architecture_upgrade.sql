@@ -64,6 +64,15 @@ CREATE TABLE IF NOT EXISTS rounds (
 
 ALTER TABLE rounds ADD COLUMN IF NOT EXISTS top_qualify_count INTEGER DEFAULT 25;
 
+-- Fix legacy constraint: migration might fail if qualification_percentage exists and is NOT NULL
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'rounds' AND column_name = 'qualification_percentage') THEN
+        ALTER TABLE rounds ALTER COLUMN qualification_percentage DROP NOT NULL;
+        ALTER TABLE rounds ALTER COLUMN qualification_percentage SET DEFAULT 50.0;
+    END IF;
+END $$ LANGUAGE plpgsql;
+
 INSERT INTO rounds (round_number, top_qualify_count) VALUES
     (1, 25),
     (2, 25),
