@@ -778,20 +778,41 @@
             </div>
 
             <div class="login-card" id="loginCard">
-                <h2 style="color: #fff;">Welcome, Participant!</h2>
-                <p style="color: rgba(255,255,255,0.6); margin-bottom: var(--space-xl); font-size: 0.95rem;">
-                    No registration required. Click below to enter the exam portal.
-                    A unique token will be assigned to you automatically.
+                <h2 style="color: #fff; margin-bottom: var(--space-md);">Participant Login</h2>
+                <p style="color: rgba(255,255,255,0.6); margin-bottom: var(--space-lg); font-size: 0.95rem;">
+                    Enter your details to proceed. These will be used for display only.
                 </p>
 
-                <div id="statusMessage" class="alert alert-info" style="display: none;">
+                <div id="statusMessage" class="alert alert-info" style="display: none; margin-bottom: var(--space-lg);">
                     <span id="statusText"></span>
                 </div>
 
-                <button class="btn btn-primary btn-lg btn-block" id="enterExamBtn"
-                    onclick="window.location.href='/exam'">
-                    <span>⚡ Enter Examination</span>
-                </button>
+                <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
+                    <div class="form-group">
+                        <label for="pName" class="form-label" style="color: #ccc;">Full Name</label>
+                        <input type="text" id="pName" class="form-input" placeholder="Enter your full name" required
+                            autocomplete="name"
+                            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pPhone" class="form-label" style="color: #ccc;">Phone Number</label>
+                        <input type="tel" id="pPhone" class="form-input" placeholder="Enter your phone number" required
+                            autocomplete="tel"
+                            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pCollege" class="form-label" style="color: #ccc;">College Name</label>
+                        <input type="text" id="pCollege" class="form-input" placeholder="Enter your college name"
+                            required
+                            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="enterExamBtn">
+                        <span>⚡ Enter Examination</span>
+                    </button>
+                </form>
 
                 <div class="event-info">
                     <div class="event-info-item">
@@ -1073,6 +1094,27 @@
             showPageAfterIntro();
             checkEventStatus();
         })();
+    </script>
+
+    <script>
+        function handleLogin() {
+            const name = document.getElementById('pName').value.trim();
+            const phone = document.getElementById('pPhone').value.trim();
+            const college = document.getElementById('pCollege').value.trim();
+
+            if (!name || !phone || !college) {
+                alert('Please fill in all details');
+                return;
+            }
+
+            // Store for display only (client-side)
+            localStorage.setItem('qc_p_name', name);
+            localStorage.setItem('qc_p_phone', phone);
+            localStorage.setItem('qc_p_college', college);
+
+            // Redirect to exam
+            window.location.href = '/exam';
+        }
     </script>
 </body>
 

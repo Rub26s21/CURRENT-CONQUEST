@@ -406,10 +406,15 @@
                     <span>⏱️</span>
                     <span id="timerDisplay">15:00</span>
                 </div>
-                <div class="participant-info">
-                    <span>🔑</span>
-                    <span class="badge badge-neutral" id="headerToken"
-                        style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Token</span>
+                <div class="participant-info"
+                    style="display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2;">
+                    <span id="pNameDisplay" style="font-weight: 600; color: white;">Participant</span>
+                    <span id="pCollegeDisplay" style="font-size: 0.75rem; color: var(--text-muted);">College</span>
+                    <div style="font-size: 0.7rem; margin-top: 2px;">
+                        <span>🔑</span>
+                        <span class="badge badge-neutral" id="headerToken"
+                            style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Token</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -572,6 +577,18 @@
             // Display token
             elements.displayToken.textContent = attemptToken.substring(0, 8) + '...';
             elements.headerToken.textContent = attemptToken.substring(0, 8);
+
+            // ─── Display Participant Info ───────────────────────
+            const pName = localStorage.getItem('qc_p_name');
+            const pCollege = localStorage.getItem('qc_p_college');
+
+            if (pName) {
+                document.getElementById('pNameDisplay').textContent = pName;
+            }
+            if (pCollege) {
+                const phone = localStorage.getItem('qc_p_phone');
+                document.getElementById('pCollegeDisplay').textContent = phone ? `${pCollege} • ${phone}` : pCollege;
+            }
 
             // ─── API Helper ─────────────────────────────────────
             async function api(endpoint, options = {}) {
