@@ -693,8 +693,11 @@
                             <button class="btn btn-success btn-sm" id="activateEventBtn" style="display: none;">
                                 🚀 Activate Event
                             </button>
-                            <button class="btn btn-danger btn-sm" id="dashboardResetBtn" title="Restart Event">
-                                🔄 Restart Entire Event
+                            <button class="btn btn-warning btn-sm" id="pauseEventBtn" style="display: none;">
+                                ⏸️ Pause Event
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="dashboardResetBtn" title="Reset Entire Event">
+                                🔄 Reset Entire Event
                             </button>
                         </div>
                     </div>
@@ -1335,9 +1338,11 @@
                     }
                     if (activateContainer) activateContainer.style.display = 'block';
                     if (activateBtn) activateBtn.style.display = 'inline-flex';
+                    if (document.getElementById('pauseEventBtn')) document.getElementById('pauseEventBtn').style.display = 'none';
                 } else {
                     if (activateContainer) activateContainer.style.display = 'none';
                     if (activateBtn) activateBtn.style.display = 'none';
+                    if (document.getElementById('pauseEventBtn')) document.getElementById('pauseEventBtn').style.display = 'inline-flex';
 
                     if (data.eventState.roundStatus === 'running') {
                         if (statusDot) statusDot.className = 'status-dot running';
@@ -1394,13 +1399,19 @@
                             <p>Status: ${isCompleted ? 'Completed' : isActive ? 'Running' : 'Pending'}</p>
                         </div>
                         ${isActive ? `
-                            <button class="btn btn-danger btn-sm" onclick="endRound(${i})">End Round</button>
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <button class="btn btn-danger btn-sm" onclick="endRound(${i})">End Round</button>
+                                <button class="btn btn-secondary btn-sm" onclick="resetRound(${i})">Reset</button>
+                            </div>
                         ` : isCompleted ? `
-                            ${round.shortlisting_completed ? `
-                                <span class="badge badge-success">Shortlisted</span>
-                            ` : `
-                                <button class="btn btn-warning btn-sm" onclick="shortlistRound(${i})">Shortlist</button>
-                            `}
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 5px;">
+                                ${round.shortlisting_completed ? `
+                                    <span class="badge badge-success">Shortlisted</span>
+                                ` : `
+                                    <button class="btn btn-warning btn-sm" onclick="shortlistRound(${i})">Shortlist</button>
+                                `}
+                                <button class="btn btn-secondary btn-sm" onclick="resetRound(${i})">Reset</button>
+                            </div>
                         ` : canStart ? `
                             <button class="btn btn-success btn-sm" onclick="startRound(${i})">Start Round</button>
                         ` : `
@@ -1410,6 +1421,16 @@
                     container.appendChild(card);
                 }
             }
+
+            // Bind Event Listeners
+            document.addEventListener('click', function (e) {
+                if (e.target && e.target.id === 'activateEventBtn') {
+                    activateEvent();
+                }
+                if (e.target && e.target.id === 'pauseEventBtn') {
+                    pauseEvent();
+                }
+            });
 
             // Activate event
             async function activateEvent() {
@@ -1434,6 +1455,58 @@
                     alert('Failed to activate event');
                 }
             }
+
+            // Pause event
+            async function pauseEvent() {
+                const confirmed = await showConfirm(
+                    'Pause Event',
+                    'This will prevent participants from accessing the exam. You can resume it later. Continue?',
+                    '⏸️'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/admin/event/pause', { method: 'POST' });
+
+                    if (result.success) {
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to pause event');
+                    }
+                } catch (error) {
+                    console.error('Pause event error:', error);
+                    alert('Failed to pause event');
+                }
+            }
+
+            // Reset Round
+            window.resetRound = async function (roundNumber) {
+                const confirmed = await showConfirm(
+                    `Reset Round ${roundNumber}`,
+                    `DANGER: This will delete ALL submissions and results for Round ${roundNumber} and reset it to 'Pending'. This cannot be undone. Are you sure?`,
+                    '🔄'
+                );
+
+                if (!confirmed) return;
+
+                try {
+                    const result = await api('/api/admin/round/reset', {
+                        method: 'POST',
+                        body: JSON.stringify({ roundNumber })
+                    });
+
+                    if (result.success) {
+                        alert(`Round ${roundNumber} has been reset.`);
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to reset round');
+                    }
+                } catch (error) {
+                    console.error('Reset round error:', error);
+                    alert('Failed to reset round');
+                }
+            };
 
             // Start round
             window.startRound = async function (roundNumber) {

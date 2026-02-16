@@ -228,6 +228,25 @@ router.post('/event/activate', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// POST /event/pause — Pause event (Deactivate)
+// ─────────────────────────────────────────────────────────────
+router.post('/event/pause', requireAdmin, async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('event_state')
+            .update({ event_active: false, updated_at: new Date().toISOString() })
+            .eq('id', 1);
+        if (error) throw error;
+
+        auditLog(null, req.admin.id, 'EVENT_PAUSED', 'Event paused', null, req);
+        res.json({ success: true, message: 'Event paused successfully' });
+    } catch (error) {
+        console.error('Event pause error:', error);
+        res.status(500).json({ success: false, message: 'Failed to pause event' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
 // POST /round/start — Start a round
 // ─────────────────────────────────────────────────────────────
 router.post('/round/start', requireAdmin, async (req, res) => {
@@ -669,6 +688,72 @@ router.post('/round/update', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Update round error:', error);
         res.status(500).json({ success: false, message: 'Failed to update round settings' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /round/reset — Reset a specific round
+// Clears submissions and results for the round, resets status to pending
+// ─────────────────────────────────────────────────────────────
+router.post('/round/reset', requireAdmin, async (req, res) => {
+    try {
+        const { roundNumber } = req.body;
+
+        if (!roundNumber || isNaN(roundNumber)) {
+            return res.status(400).json({ success: false, message: 'Invalid round number' });
+        }
+
+        // Get current event state
+        const { data: eventState } = await supabase
+            .from('event_state')
+            .select('*')
+            .eq('id', 1)
+            .single();
+
+        // Safety check: Can only reset current round or the immediate previous one if current is not started
+        // Actually, for full control, let's allow resetting any round provided future rounds are not running? 
+        // For simplicity: Allow resetting the 'current_round' pointer or any round >= current_round.
+
+        // 1. Delete submissions for this round
+        await supabase.from('submissions').delete().eq('round_number', roundNumber);
+
+        // 2. Delete results for this round
+        await supabase.from('results').delete().eq('round_number', roundNumber);
+
+        // 3. Delete audit logs for this round (optional, but cleaner for a "hard reset")
+        // await supabase.from('audit_logs').delete().eq('round_number', roundNumber);
+
+        // 4. Reset round status in 'rounds' table
+        await supabase
+            .from('rounds')
+            .update({
+                status: 'pending',
+                started_at: null,
+                ended_at: null,
+                shortlisting_completed: false
+            })
+            .eq('round_number', roundNumber);
+
+        // 5. If this is the active current round, update event_state
+        if (eventState.current_round === roundNumber) {
+            await supabase
+                .from('event_state')
+                .update({
+                    round_status: 'not_started',
+                    round_started_at: null,
+                    round_ends_at: null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', 1);
+        }
+
+        auditLog(null, req.admin.id, 'ROUND_RESET', `Round ${roundNumber} has been reset`, roundNumber, req);
+
+        res.json({ success: true, message: `Round ${roundNumber} reset successfully` });
+
+    } catch (error) {
+        console.error('Round reset error:', error);
+        res.status(500).json({ success: false, message: 'Failed to reset round' });
     }
 });
 
