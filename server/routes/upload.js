@@ -323,16 +323,23 @@ router.post('/questions', requireAdmin, upload.single('file'), async (req, res) 
             }
         }
 
-        // Delete existing questions for this round
-        await supabase
+        // Delete existing questions for this round first
+        const { error: deleteError } = await supabase
             .from('questions')
             .delete()
             .eq('round_number', roundNumber);
 
-        // Insert new questions
+        if (deleteError) {
+            console.warn('Delete existing questions warning:', deleteError.message);
+        }
+
+        // Insert new questions (use upsert to handle any remaining duplicates)
         const { error } = await supabase
             .from('questions')
-            .insert(questionsToInsert);
+            .upsert(questionsToInsert, {
+                onConflict: 'round_number,question_number',
+                ignoreDuplicates: false
+            });
 
         if (error) throw error;
 
