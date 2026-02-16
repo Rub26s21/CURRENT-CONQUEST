@@ -183,6 +183,12 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             if (r.qualified_for_next) qualifiedPerRound[r.round_number].qualified++;
         });
 
+        // Calculate total qualified across all rounds for display
+        let totalQualified = 0;
+        Object.values(qualifiedPerRound).forEach(r => {
+            totalQualified += r.qualified || 0;
+        });
+
         res.json({
             success: true,
             data: {
@@ -192,6 +198,12 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
                     roundStartedAt: eventState.round_started_at,
                     roundEndsAt: eventState.round_ends_at,
                     eventActive: eventState.event_active
+                },
+                // Frontend expects this shape:
+                participants: {
+                    total: totalSubmissions,
+                    qualified: totalQualified,
+                    submittedCurrentRound: submittedCount
                 },
                 submissions: {
                     currentRound: submittedCount,

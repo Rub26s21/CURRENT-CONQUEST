@@ -717,6 +717,7 @@
                     <div class="round-cards" id="roundCards">
                         <!-- Round cards will be injected here -->
                     </div>
+                </div>
             </section>
 
 
@@ -1313,16 +1314,20 @@
 
             // Render dashboard
             function renderDashboard(data) {
+                // Safety: ensure sub-objects exist
+                const participants = data.participants || {};
+                const eventState = data.eventState || {};
+
                 // Update stats (with null checks)
                 const setElementText = (id, text) => {
                     const el = document.getElementById(id);
                     if (el) el.textContent = text;
                 };
 
-                setElementText('totalParticipants', data.participants.total);
-                setElementText('qualifiedParticipants', data.participants.qualified);
-                setElementText('submittedCount', data.participants.submittedCurrentRound);
-                setElementText('currentRoundDisplay', data.eventState.currentRound === 0 ? 'Not Started' : `Round ${data.eventState.currentRound}`);
+                setElementText('totalParticipants', participants.total || 0);
+                setElementText('qualifiedParticipants', participants.qualified || 0);
+                setElementText('submittedCount', participants.submittedCurrentRound || 0);
+                setElementText('currentRoundDisplay', eventState.currentRound === 0 ? 'Not Started' : `Round ${eventState.currentRound || '-'}`);
 
                 // Update event status
                 const statusDot = document.getElementById('eventStatusDot');
@@ -1332,7 +1337,7 @@
 
                 const activateBtn = document.getElementById('activateEventBtn');
                 const pauseBtn = document.getElementById('pauseEventBtn');
-                const isActive = data.eventState.eventActive;
+                const isActive = eventState.eventActive;
 
                 // Toggle Buttons based on active state
                 if (activateBtn) activateBtn.style.display = isActive ? 'none' : 'inline-flex';
@@ -1348,18 +1353,18 @@
                         statusBadge.className = 'badge badge-warning';
                     }
                 } else {
-                    if (data.eventState.roundStatus === 'running') {
+                    if (eventState.roundStatus === 'running') {
                         if (statusDot) statusDot.className = 'status-dot running';
-                        if (statusText) statusText.textContent = `Round ${data.eventState.currentRound} Running`;
+                        if (statusText) statusText.textContent = `Round ${eventState.currentRound} Running`;
                         if (statusBadge) {
-                            statusBadge.textContent = `Round ${data.eventState.currentRound} Running`;
+                            statusBadge.textContent = `Round ${eventState.currentRound} Running`;
                             statusBadge.className = 'badge badge-success';
                         }
-                    } else if (data.eventState.roundStatus === 'completed') {
+                    } else if (eventState.roundStatus === 'completed') {
                         if (statusDot) statusDot.className = 'status-dot completed';
-                        if (statusText) statusText.textContent = `Round ${data.eventState.currentRound} Completed`;
+                        if (statusText) statusText.textContent = `Round ${eventState.currentRound} Completed`;
                         if (statusBadge) {
-                            statusBadge.textContent = `Round ${data.eventState.currentRound} Completed`;
+                            statusBadge.textContent = `Round ${eventState.currentRound} Completed`;
                             statusBadge.className = 'badge badge-primary';
                         }
                     } else {
