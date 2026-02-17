@@ -183,6 +183,12 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
             if (r.qualified_for_next) qualifiedPerRound[r.round_number].qualified++;
         });
 
+        // Calculate total qualified across all rounds for display
+        let totalQualified = 0;
+        Object.values(qualifiedPerRound).forEach(r => {
+            totalQualified += r.qualified || 0;
+        });
+
         res.json({
             success: true,
             data: {
@@ -192,6 +198,12 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
                     roundStartedAt: eventState.round_started_at,
                     roundEndsAt: eventState.round_ends_at,
                     eventActive: eventState.event_active
+                },
+                // Frontend expects this shape:
+                participants: {
+                    total: totalSubmissions,
+                    qualified: totalQualified,
+                    submittedCurrentRound: submittedCount
                 },
                 submissions: {
                     currentRound: submittedCount,
@@ -224,6 +236,25 @@ router.post('/event/activate', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Event activation error:', error);
         res.status(500).json({ success: false, message: 'Failed to activate event' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /event/pause — Pause event (Deactivate)
+// ─────────────────────────────────────────────────────────────
+router.post('/event/pause', requireAdmin, async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('event_state')
+            .update({ event_active: false, updated_at: new Date().toISOString() })
+            .eq('id', 1);
+        if (error) throw error;
+
+        auditLog(null, req.admin.id, 'EVENT_PAUSED', 'Event paused', null, req);
+        res.json({ success: true, message: 'Event paused successfully' });
+    } catch (error) {
+        console.error('Event pause error:', error);
+        res.status(500).json({ success: false, message: 'Failed to pause event' });
     }
 });
 
@@ -326,17 +357,12 @@ router.post('/round/start', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /round/end — END ROUND (V4: uses finalize_round_v4)
+// POST /round/end — END ROUND (V4)
 //
-// Calls the SINGLE ATOMIC finalize_round_v4() database function.
+// ONLY marks the round as completed and stops accepting submissions.
+// Does NOT evaluate or rank answers.
+// Evaluation + ranking happens when admin clicks "Shortlist".
 // IDEMPOTENT: double calls are no-ops.
-// SEQUENCE:
-//   1. Lock round (idempotent guard)
-//   2. Evaluate all submissions (bulk)
-//   3. Rank results deterministically
-//   4. Shortlist top 25
-//   5. Update event_state
-//   6. Return summary
 // ─────────────────────────────────────────────────────────────
 router.post('/round/end', requireAdmin, async (req, res) => {
     try {
@@ -353,42 +379,59 @@ router.post('/round/end', requireAdmin, async (req, res) => {
 
         const roundNumber = eventState.current_round;
 
-        // ── CALL ATOMIC finalize_round_v4() ───────────────────
-        const { data: result, error } = await supabase.rpc('finalize_round_v4', {
-            p_round_number: roundNumber
-        });
+        // Check if already completed (idempotent)
+        const { data: round } = await supabase
+            .from('rounds')
+            .select('status')
+            .eq('round_number', roundNumber)
+            .single();
 
-        if (error) {
-            console.error('finalize_round_v4 RPC error:', error);
-            throw error;
-        }
-
-        // Handle idempotent case
-        if (result?.already_completed) {
+        if (round && round.status === 'completed') {
             return res.json({
                 success: true,
-                message: `Round ${roundNumber} was already finalized`,
-                alreadyCompleted: true,
-                data: result
+                message: `Round ${roundNumber} was already ended`,
+                alreadyCompleted: true
             });
         }
 
-        // Mark shortlisting as completed
-        await supabase
+        const now = new Date().toISOString();
+
+        // Mark round as completed
+        const { error: roundError } = await supabase
             .from('rounds')
-            .update({ shortlisting_completed: true })
+            .update({ status: 'completed', ended_at: now })
+            .eq('round_number', roundNumber);
+        if (roundError) throw roundError;
+
+        // Update event state
+        const { error: eventError } = await supabase
+            .from('event_state')
+            .update({
+                round_status: 'completed',
+                updated_at: now
+            })
+            .eq('id', 1);
+        if (eventError) throw eventError;
+
+        // Count submissions for this round
+        const { count: submissionCount } = await supabase
+            .from('submissions')
+            .select('*', { count: 'exact', head: true })
             .eq('round_number', roundNumber);
 
         auditLog(null, req.admin.id, 'ROUND_ENDED',
-            `Round ${roundNumber} finalized — ` +
-            `${result.total_evaluated || 0} evaluated, ` +
-            `${result.qualified_count || 0} qualified`,
-            roundNumber, req, result);
+            `Round ${roundNumber} ended — ${submissionCount || 0} submissions collected. Awaiting shortlist.`,
+            roundNumber, req);
 
         res.json({
             success: true,
-            message: `Round ${roundNumber} ended successfully`,
-            data: result
+            message: `Round ${roundNumber} ended. ${submissionCount || 0} submissions collected. Click "Shortlist" to evaluate and rank.`,
+            data: {
+                roundNumber,
+                submissionCount: submissionCount || 0,
+                endedAt: now,
+                note: 'Answers will be evaluated when you click Shortlist'
+            }
         });
     } catch (error) {
         console.error('Round end error:', error);
@@ -523,40 +566,59 @@ router.get('/submissions/:roundNumber', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GET /audit-logs — Get audit logs
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-// GET /participants — Get participants (V4: from submissions)
-// Maps submissions to participant-like structure for frontend compatibility
+// GET /participants — Get all submissions with results (V4)
+// Returns submission data enriched with evaluation results
 // ─────────────────────────────────────────────────────────────
 router.get('/participants', requireAdmin, async (req, res) => {
     try {
-        // Get all unique submissions
-        // In V4, we don't have persistent participants, so we show recent submissions
-        const { data: submissions, error } = await supabase
+        // Get all submissions
+        const { data: submissions, error: subErr } = await supabase
             .from('submissions')
             .select('*')
             .order('submitted_at', { ascending: false })
-            .limit(100);
+            .limit(500);
 
-        if (error) throw error;
+        if (subErr) throw subErr;
 
-        // Map to frontend expected format
-        const participants = submissions.map(s => ({
-            id: s.id,
-            system_id: s.attempt_token, // Use token as ID
-            name: 'Anonymous Candidate', // V4: No personal data
-            college_name: 'Hidden',
-            phone_number: '-',
-            current_round: s.round_number,
-            is_qualified: false, // Calculated in results
-            is_disqualified: false,
-            created_at: s.submitted_at
-        }));
+        // Get all results for enrichment
+        const { data: results, error: resErr } = await supabase
+            .from('results')
+            .select('attempt_token, round_number, score, rank, qualified_for_next')
+            .limit(500);
+
+        if (resErr) throw resErr;
+
+        // Build a lookup map: token_round -> result
+        const resultMap = {};
+        if (results) {
+            results.forEach(r => {
+                resultMap[`${r.attempt_token}_${r.round_number}`] = r;
+            });
+        }
+
+        // Enrich submissions with results
+        const participants = (submissions || []).map(s => {
+            const key = `${s.attempt_token}_${s.round_number}`;
+            const result = resultMap[key] || {};
+            const answerCount = Array.isArray(s.answers) ? s.answers.length : 0;
+
+            return {
+                id: s.id,
+                attempt_token: s.attempt_token,
+                round_number: s.round_number,
+                answer_count: answerCount,
+                time_taken_seconds: s.time_taken_seconds,
+                submitted_at: s.submitted_at,
+                score: result.score !== undefined ? result.score : null,
+                rank: result.rank || null,
+                qualified_for_next: result.qualified_for_next || false
+            };
+        });
 
         res.json({
             success: true,
-            data: participants || []
+            data: participants,
+            total: participants.length
         });
     } catch (error) {
         console.error('Participants fetch error:', error);
@@ -673,27 +735,38 @@ router.post('/round/update', requireAdmin, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /reset-event — Reset entire event (V4)
-// Only clears submissions and results. No participants table.
+// POST /round/reset — Reset a specific round
+// Clears submissions and results for the round, resets status to pending
 // ─────────────────────────────────────────────────────────────
-router.post('/reset-event', requireAdmin, async (req, res) => {
+router.post('/round/reset', requireAdmin, async (req, res) => {
     try {
-        const { confirmReset, preserveQuestions } = req.body;
+        const { roundNumber } = req.body;
 
-        if (confirmReset !== 'RESET_ALL_DATA') {
-            return res.status(400).json({ success: false, message: 'Invalid confirmation code' });
+        if (!roundNumber || isNaN(roundNumber)) {
+            return res.status(400).json({ success: false, message: 'Invalid round number' });
         }
 
-        // Delete in order
-        await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        await supabase.from('submissions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        // Get current event state
+        const { data: eventState } = await supabase
+            .from('event_state')
+            .select('*')
+            .eq('id', 1)
+            .single();
 
-        if (!preserveQuestions) {
-            await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        }
+        // Safety check: Can only reset current round or the immediate previous one if current is not started
+        // Actually, for full control, let's allow resetting any round provided future rounds are not running? 
+        // For simplicity: Allow resetting the 'current_round' pointer or any round >= current_round.
 
-        // Reset rounds
+        // 1. Delete submissions for this round
+        await supabase.from('submissions').delete().eq('round_number', roundNumber);
+
+        // 2. Delete results for this round
+        await supabase.from('results').delete().eq('round_number', roundNumber);
+
+        // 3. Delete audit logs for this round (optional, but cleaner for a "hard reset")
+        // await supabase.from('audit_logs').delete().eq('round_number', roundNumber);
+
+        // 4. Reset round status in 'rounds' table
         await supabase
             .from('rounds')
             .update({
@@ -702,28 +775,28 @@ router.post('/reset-event', requireAdmin, async (req, res) => {
                 ended_at: null,
                 shortlisting_completed: false
             })
-            .neq('round_number', 0);
+            .eq('round_number', roundNumber);
 
-        // Reset event state
-        await supabase
-            .from('event_state')
-            .update({
-                current_round: 0,
-                round_status: 'not_started',
-                round_started_at: null,
-                round_ends_at: null,
-                event_active: false,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', 1);
+        // 5. If this is the active current round, update event_state
+        if (eventState.current_round === roundNumber) {
+            await supabase
+                .from('event_state')
+                .update({
+                    round_status: 'not_started',
+                    round_started_at: null,
+                    round_ends_at: null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', 1);
+        }
 
-        auditLog(null, req.admin.id, 'EVENT_RESET',
-            `Event reset${preserveQuestions ? ' (questions preserved)' : ''}`, null, req);
+        auditLog(null, req.admin.id, 'ROUND_RESET', `Round ${roundNumber} has been reset`, roundNumber, req);
 
-        res.json({ success: true, message: 'Event reset successfully' });
+        res.json({ success: true, message: `Round ${roundNumber} reset successfully` });
+
     } catch (error) {
-        console.error('Reset error:', error);
-        res.status(500).json({ success: false, message: 'Failed to reset event' });
+        console.error('Reset round error:', error);
+        res.status(500).json({ success: false, message: 'Failed to reset round' });
     }
 });
 

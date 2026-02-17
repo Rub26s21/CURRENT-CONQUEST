@@ -282,12 +282,6 @@ router.post('/bulk-add', requireAdmin, async (req, res) => {
             });
         }
 
-        // Delete existing questions for this round
-        await supabase
-            .from('questions')
-            .delete()
-            .eq('round_number', roundNumber);
-
         // Prepare questions for insertion
         const questionsToInsert = questions.slice(0, 15).map((q, index) => ({
             round_number: roundNumber,
@@ -317,9 +311,23 @@ router.post('/bulk-add', requireAdmin, async (req, res) => {
             }
         }
 
+        // Delete existing questions for this round first
+        const { error: deleteError } = await supabase
+            .from('questions')
+            .delete()
+            .eq('round_number', roundNumber);
+
+        if (deleteError) {
+            console.warn('Delete existing questions warning:', deleteError.message);
+        }
+
+        // Insert new questions (use upsert to handle any remaining duplicates)
         const { error } = await supabase
             .from('questions')
-            .insert(questionsToInsert);
+            .upsert(questionsToInsert, {
+                onConflict: 'round_number,question_number',
+                ignoreDuplicates: false
+            });
 
         if (error) throw error;
 
