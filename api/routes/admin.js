@@ -800,4 +800,58 @@ router.post('/round/reset', requireAdmin, async (req, res) => {
     }
 });
 
+// ─────────────────────────────────────────────────────────────
+// POST /reset-event — Reset entire event
+// ─────────────────────────────────────────────────────────────
+router.post('/reset-event', requireAdmin, async (req, res) => {
+    try {
+        // 1. Delete all submissions (safe delete)
+        const { error: subError } = await supabase
+            .from('submissions')
+            .delete()
+            .neq('id', -1); // Delete all rows
+        if (subError) throw subError;
+
+        // 2. Delete all results
+        const { error: resError } = await supabase
+            .from('results')
+            .delete()
+            .neq('id', -1);
+        if (resError) throw resError;
+
+        // 3. Reset rounds to pending
+        const { error: roundError } = await supabase
+            .from('rounds')
+            .update({
+                status: 'pending',
+                started_at: null,
+                ended_at: null,
+                shortlisting_completed: false
+            })
+            .gt('round_number', 0);
+        if (roundError) throw roundError;
+
+        // 4. Reset event state
+        const { error: eventError } = await supabase
+            .from('event_state')
+            .update({
+                current_round: 0,
+                round_status: 'not_started',
+                round_started_at: null,
+                round_ends_at: null,
+                event_active: false,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', 1);
+        if (eventError) throw eventError;
+
+        auditLog(null, req.admin.id, 'EVENT_RESET', 'Entire event has been reset', null, req);
+
+        res.json({ success: true, message: 'Event has been fully reset' });
+    } catch (error) {
+        console.error('Reset event error:', error);
+        res.status(500).json({ success: false, message: 'Failed to reset event' });
+    }
+});
+
 module.exports = router;
