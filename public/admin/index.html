@@ -2064,37 +2064,10 @@
 
 
 
-            // ─────────────────────────────────────────────────────
-            // TOKEN → NAME LOOKUP (from participant_details table)
-            // ─────────────────────────────────────────────────────
-            let tokenNameMap = {};
 
-            async function loadTokenNameMap() {
-                try {
-                    const result = await api('/api/admin/participant-details');
-                    if (result.success && result.data) {
-                        tokenNameMap = {};
-                        result.data.forEach(p => {
-                            if (p.attempt_token) {
-                                tokenNameMap[p.attempt_token] = p.name || 'Unknown';
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.log('Token name map load skipped:', error.message);
-                }
-            }
-
-            function getNameForToken(token) {
-                if (!token) return 'Unknown';
-                return tokenNameMap[token] || token.substring(0, 8) + '...';
-            }
-
-            // Load participants
+            // Load participants (names come directly from backend)
             async function loadParticipants() {
                 try {
-                    // Load name map first, then submissions
-                    await loadTokenNameMap();
                     const result = await api('/api/admin/participants');
 
                     if (result.success) {
@@ -2121,7 +2094,7 @@
                 }
 
                 tbody.innerHTML = participants.map((p, idx) => {
-                    const name = getNameForToken(p.attempt_token);
+                    const name = p.participant_name || 'Unknown';
                     const timeTaken = p.time_taken_seconds ? formatTime(p.time_taken_seconds) : '-';
                     const scoreDisplay = p.score !== null && p.score !== undefined ? `${p.score}/15` : 'Pending';
                     const rankDisplay = p.rank ? `#${p.rank}` : '-';
@@ -2174,7 +2147,7 @@
                     ['#', 'Participant Name', 'Round', 'Answers', 'Score', 'Rank', 'Time (seconds)', 'Qualified', 'Submitted At'].join(','),
                     ...data.map((p, i) => [
                         i + 1,
-                        `"${getNameForToken(p.attempt_token)}"`,
+                        `"${p.participant_name || 'Unknown'}"`,
                         p.round_number || '',
                         p.answer_count || 0,
                         p.score !== null && p.score !== undefined ? p.score : 'Pending',
@@ -2201,7 +2174,6 @@
                 document.getElementById('resultsRoundNumber').textContent = roundNumber;
 
                 try {
-                    await loadTokenNameMap();
                     const result = await api(`/api/admin/results/${roundNumber}`);
 
                     if (result.success) {
@@ -2226,7 +2198,7 @@
                 }
 
                 tbody.innerHTML = results.map(r => {
-                    const name = getNameForToken(r.attempt_token);
+                    const name = r.participant_name || 'Unknown';
                     return `
                     <tr>
                         <td><strong>#${r.rank || '-'}</strong></td>
@@ -2262,9 +2234,6 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Loading combined results...</td></tr>';
 
                 try {
-                    // Load name map first
-                    await loadTokenNameMap();
-
                     const [r1, r2, r3] = await Promise.all([
                         api('/api/admin/results/1'),
                         api('/api/admin/results/2'),
@@ -2281,7 +2250,7 @@
                                 if (!tokenScores[token]) {
                                     tokenScores[token] = {
                                         attempt_token: token,
-                                        name: getNameForToken(token),
+                                        name: r.participant_name || 'Unknown',
                                         round1: null, round2: null, round3: null,
                                         total: 0
                                     };
@@ -2325,8 +2294,6 @@
             // Export Combined Results - V4
             document.getElementById('exportCombinedResultsBtn')?.addEventListener('click', async () => {
                 try {
-                    await loadTokenNameMap();
-
                     const [r1, r2, r3] = await Promise.all([
                         api('/api/admin/results/1'),
                         api('/api/admin/results/2'),
@@ -2342,7 +2309,7 @@
                                 if (!tokenScores[token]) {
                                     tokenScores[token] = {
                                         attempt_token: token,
-                                        name: getNameForToken(token),
+                                        name: r.participant_name || 'Unknown',
                                         round1: '', round2: '', round3: '',
                                         total: 0
                                     };

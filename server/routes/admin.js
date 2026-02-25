@@ -521,6 +521,24 @@ router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
+        // Fetch participant names from participant_details
+        const { data: participants } = await supabase
+            .from('participant_details')
+            .select('attempt_token, name');
+
+        const nameMap = {};
+        if (participants) {
+            participants.forEach(p => {
+                if (p.attempt_token) nameMap[p.attempt_token] = p.name || 'Unknown';
+            });
+        }
+
+        // Enrich results with participant names
+        const enrichedResults = (results || []).map(r => ({
+            ...r,
+            participant_name: nameMap[r.attempt_token] || 'Unknown'
+        }));
+
         const { data: auditLogs } = await supabase
             .from('audit_logs')
             .select('*')
@@ -530,7 +548,7 @@ router.get('/results/:roundNumber', requireAdmin, async (req, res) => {
         res.json({
             success: true,
             data: {
-                results: results || [],
+                results: enrichedResults,
                 auditLogs: auditLogs || []
             }
         });
@@ -591,6 +609,18 @@ router.get('/participants', requireAdmin, async (req, res) => {
 
         if (resErr) throw resErr;
 
+        // Get participant names from participant_details
+        const { data: pdList } = await supabase
+            .from('participant_details')
+            .select('attempt_token, name');
+
+        const nameMap = {};
+        if (pdList) {
+            pdList.forEach(p => {
+                if (p.attempt_token) nameMap[p.attempt_token] = p.name || 'Unknown';
+            });
+        }
+
         // Build a lookup map: token_round -> result
         const resultMap = {};
         if (results) {
@@ -599,8 +629,8 @@ router.get('/participants', requireAdmin, async (req, res) => {
             });
         }
 
-        // Enrich submissions with results
-        const participants = (submissions || []).map(s => {
+        // Enrich submissions with results and participant names
+        const enrichedParticipants = (submissions || []).map(s => {
             const key = `${s.attempt_token}_${s.round_number}`;
             const result = resultMap[key] || {};
             const answerCount = Array.isArray(s.answers) ? s.answers.length : 0;
@@ -608,6 +638,7 @@ router.get('/participants', requireAdmin, async (req, res) => {
             return {
                 id: s.id,
                 attempt_token: s.attempt_token,
+                participant_name: nameMap[s.attempt_token] || 'Unknown',
                 round_number: s.round_number,
                 answer_count: answerCount,
                 time_taken_seconds: s.time_taken_seconds,
@@ -620,8 +651,8 @@ router.get('/participants', requireAdmin, async (req, res) => {
 
         res.json({
             success: true,
-            data: participants,
-            total: participants.length
+            data: enrichedParticipants,
+            total: enrichedParticipants.length
         });
     } catch (error) {
         console.error('Participants fetch error:', error);
@@ -676,14 +707,26 @@ router.get('/export/:roundNumber', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
+        // Fetch participant names
+        const { data: participants } = await supabase
+            .from('participant_details')
+            .select('attempt_token, name');
+
+        const nameMap = {};
+        if (participants) {
+            participants.forEach(p => {
+                if (p.attempt_token) nameMap[p.attempt_token] = p.name || 'Unknown';
+            });
+        }
+
         const csvRows = [
-            ['Rank', 'Attempt Token', 'Score', 'Time (sec)', 'Qualified']
+            ['Rank', 'Participant Name', 'Score', 'Time (sec)', 'Qualified']
         ];
 
         results?.forEach(r => {
             csvRows.push([
                 r.rank || '-',
-                r.attempt_token,
+                nameMap[r.attempt_token] || 'Unknown',
                 r.score,
                 r.time_taken_seconds || '',
                 r.qualified_for_next ? 'Yes' : 'No'
