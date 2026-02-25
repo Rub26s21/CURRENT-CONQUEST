@@ -1060,27 +1060,13 @@
             const statusMessage = document.getElementById('statusMessage');
             const statusText = document.getElementById('statusText');
 
-            // Create floating particles for intro
-            function createIntroParticles() {
-                for (let i = 0; i < 30; i++) {
-                    const particle = document.createElement('span');
-                    particle.style.left = Math.random() * 100 + '%';
-                    particle.style.top = Math.random() * 100 + 50 + '%';
-                    particle.style.animationDelay = Math.random() * 4 + 's';
-                    particle.style.animationDuration = (3 + Math.random() * 3) + 's';
-                    introParticles.appendChild(particle);
-                }
-            }
+            // Intro removed — show login page immediately
+            function createIntroParticles() { /* No-op: intro removed */ }
 
-            // Show landing page after intro animation
             function showPageAfterIntro() {
-                setTimeout(() => {
-                    introScreen.classList.add('fade-out');
-                    setTimeout(() => {
-                        introScreen.style.display = 'none';
-                        loginPage.style.display = 'flex';
-                    }, 1000);
-                }, 4500);
+                // Skip intro entirely — show login page immediately
+                introScreen.style.display = 'none';
+                loginPage.style.display = 'flex';
             }
 
             // Check event status (optional, just for UX)
@@ -1103,8 +1089,7 @@
                 }
             }
 
-            // Initialize
-            createIntroParticles();
+            // Initialize — no intro animation
             showPageAfterIntro();
             checkEventStatus();
         })();

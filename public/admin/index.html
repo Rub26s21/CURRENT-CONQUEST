@@ -617,10 +617,7 @@
                     <span class="nav-icon">🏆</span>
                     <span>Results</span>
                 </div>
-                <div class="nav-item" data-section="participant-details">
-                    <span class="nav-icon">👥</span>
-                    <span>Participants</span>
-                </div>
+
                 <div class="nav-item" data-section="file-upload">
                     <span class="nav-icon">📁</span>
                     <span>File Upload</span>
@@ -840,7 +837,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Attempt Token</th>
+                                <th>Participant Name</th>
                                 <th>Round</th>
                                 <th>Answers</th>
                                 <th>Score</th>
@@ -883,7 +880,7 @@
                         <thead>
                             <tr>
                                 <th>Rank</th>
-                                <th>Attempt Token</th>
+                                <th>Participant Name</th>
                                 <th>Score</th>
                                 <th>Time Taken</th>
                                 <th>Status</th>
@@ -907,7 +904,7 @@
                         <thead>
                             <tr>
                                 <th>Final Rank</th>
-                                <th>Attempt Token</th>
+                                <th>Participant Name</th>
                                 <th>Round 1</th>
                                 <th>Round 2</th>
                                 <th>Round 3</th>
@@ -924,144 +921,7 @@
                 </div>
             </section>
 
-            <!-- Participant Details Section (Admin-only) -->
-            <section class="section hidden" id="section-participant-details">
-                <div class="admin-header">
-                    <h1 class="admin-title">👥 Participant Details</h1>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <span id="participantDetailCount" class="badge badge-primary"
-                            style="font-size: 0.9rem; padding: 6px 14px;">0 total</span>
-                        <button class="btn btn-primary" id="downloadParticipantDetailsBtn">📥 Download CSV</button>
-                        <button class="btn btn-secondary" id="refreshParticipantDetails">🔄 Refresh</button>
-                    </div>
-                </div>
 
-                <!-- Add Participant Form -->
-                <div class="card" style="margin-bottom: var(--space-xl);">
-                    <h3 style="margin-bottom: var(--space-md); color: var(--text-primary);">➕ Add New Participant</h3>
-                    <form id="addParticipantForm">
-                        <div class="form-row"
-                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
-                            <div class="form-group">
-                                <label for="pd-name">Name *</label>
-                                <input type="text" id="pd-name" class="form-control" placeholder="Full Name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="pd-college">College</label>
-                                <input type="text" id="pd-college" class="form-control"
-                                    placeholder="College / Institution">
-                            </div>
-                            <div class="form-group">
-                                <label for="pd-phone">Phone</label>
-                                <input type="text" id="pd-phone" class="form-control" placeholder="Phone Number">
-                            </div>
-                        </div>
-                        <div class="form-row"
-                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
-                            <div class="form-group">
-                                <label for="pd-email">Email</label>
-                                <input type="email" id="pd-email" class="form-control" placeholder="Email Address">
-                            </div>
-                            <div class="form-group">
-                                <label for="pd-department">Department</label>
-                                <input type="text" id="pd-department" class="form-control" placeholder="Department">
-                            </div>
-                            <div class="form-group">
-                                <label for="pd-token">Link to Attempt Token</label>
-                                <input type="text" id="pd-token" class="form-control" placeholder="Optional UUID token">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="pd-notes">Notes</label>
-                            <input type="text" id="pd-notes" class="form-control"
-                                placeholder="Additional notes (optional)">
-                        </div>
-                        <button type="submit" class="btn btn-success" style="margin-top: var(--space-sm);">✅ Add
-                            Participant</button>
-                    </form>
-                </div>
-
-                <!-- Search -->
-                <div style="margin-bottom: var(--space-md);">
-                    <input type="text" id="participantSearchInput" class="form-control"
-                        placeholder="🔍 Search by name, college, phone..." style="max-width: 400px;">
-                </div>
-
-                <!-- Participants Table -->
-                <div class="table-container">
-                    <table class="table" id="participantDetailsTable">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Name</th>
-                                <th>College</th>
-                                <th>Department</th>
-                                <th>Phone</th>
-                                <th>Email</th>
-                                <th>Token</th>
-                                <th>Score</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="participantDetailsTableBody">
-                            <tr>
-                                <td colspan="9" class="text-center text-muted">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Edit Participant Modal -->
-            <div class="modal-overlay hidden" id="editParticipantModal">
-                <div class="modal" style="max-width: 550px;">
-                    <div class="modal-header">
-                        <h3>✏️ Edit Participant</h3>
-                        <button class="modal-close" id="closeEditParticipantModal">&times;</button>
-                    </div>
-                    <form id="editParticipantForm">
-                        <input type="hidden" id="edit-pd-id">
-                        <div class="form-group">
-                            <label for="edit-pd-name">Name *</label>
-                            <input type="text" id="edit-pd-name" class="form-control" required>
-                        </div>
-                        <div class="form-row"
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
-                            <div class="form-group">
-                                <label for="edit-pd-college">College</label>
-                                <input type="text" id="edit-pd-college" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="edit-pd-department">Department</label>
-                                <input type="text" id="edit-pd-department" class="form-control">
-                            </div>
-                        </div>
-                        <div class="form-row"
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
-                            <div class="form-group">
-                                <label for="edit-pd-phone">Phone</label>
-                                <input type="text" id="edit-pd-phone" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label for="edit-pd-email">Email</label>
-                                <input type="email" id="edit-pd-email" class="form-control">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-pd-token">Attempt Token</label>
-                            <input type="text" id="edit-pd-token" class="form-control" placeholder="UUID">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-pd-notes">Notes</label>
-                            <input type="text" id="edit-pd-notes" class="form-control">
-                        </div>
-                        <div style="display: flex; gap: var(--space-md); margin-top: var(--space-md);">
-                            <button type="submit" class="btn btn-primary">💾 Save Changes</button>
-                            <button type="button" class="btn btn-secondary" id="cancelEditParticipant">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
             <!-- File Upload Section -->
             <section class="section hidden" id="section-file-upload">
@@ -1411,9 +1271,6 @@
                         break;
                     case 'results':
                         loadCombinedResults();
-                        break;
-                    case 'participant-details':
-                        loadParticipantDetails();
                         break;
                     case 'settings':
                         loadAuditLogs();
@@ -2207,9 +2064,37 @@
 
 
 
+            // ─────────────────────────────────────────────────────
+            // TOKEN → NAME LOOKUP (from participant_details table)
+            // ─────────────────────────────────────────────────────
+            let tokenNameMap = {};
+
+            async function loadTokenNameMap() {
+                try {
+                    const result = await api('/api/admin/participant-details');
+                    if (result.success && result.data) {
+                        tokenNameMap = {};
+                        result.data.forEach(p => {
+                            if (p.attempt_token) {
+                                tokenNameMap[p.attempt_token] = p.name || 'Unknown';
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.log('Token name map load skipped:', error.message);
+                }
+            }
+
+            function getNameForToken(token) {
+                if (!token) return 'Unknown';
+                return tokenNameMap[token] || token.substring(0, 8) + '...';
+            }
+
             // Load participants
             async function loadParticipants() {
                 try {
+                    // Load name map first, then submissions
+                    await loadTokenNameMap();
                     const result = await api('/api/admin/participants');
 
                     if (result.success) {
@@ -2222,7 +2107,7 @@
                 }
             }
 
-            // Render participants (V4: enriched submissions)
+            // Render participants (V4: enriched submissions with names)
             function renderParticipants(participants) {
                 const tbody = document.getElementById('participantsTableBody');
 
@@ -2236,8 +2121,7 @@
                 }
 
                 tbody.innerHTML = participants.map((p, idx) => {
-                    const token = p.attempt_token || '-';
-                    const shortToken = token.length > 12 ? token.substring(0, 8) + '...' : token;
+                    const name = getNameForToken(p.attempt_token);
                     const timeTaken = p.time_taken_seconds ? formatTime(p.time_taken_seconds) : '-';
                     const scoreDisplay = p.score !== null && p.score !== undefined ? `${p.score}/15` : 'Pending';
                     const rankDisplay = p.rank ? `#${p.rank}` : '-';
@@ -2250,7 +2134,7 @@
                     return `
                     <tr>
                         <td>${idx + 1}</td>
-                        <td><code title="${token}">${shortToken}</code></td>
+                        <td><strong>${name}</strong></td>
                         <td>Round ${p.round_number || '-'}</td>
                         <td>${p.answer_count || 0} answers</td>
                         <td><strong>${scoreDisplay}</strong></td>
@@ -2287,10 +2171,10 @@
                 }
 
                 const csv = [
-                    ['#', 'Attempt Token', 'Round', 'Answers', 'Score', 'Rank', 'Time (seconds)', 'Qualified', 'Submitted At'].join(','),
+                    ['#', 'Participant Name', 'Round', 'Answers', 'Score', 'Rank', 'Time (seconds)', 'Qualified', 'Submitted At'].join(','),
                     ...data.map((p, i) => [
                         i + 1,
-                        `"${p.attempt_token || ''}"`,
+                        `"${getNameForToken(p.attempt_token)}"`,
                         p.round_number || '',
                         p.answer_count || 0,
                         p.score !== null && p.score !== undefined ? p.score : 'Pending',
@@ -2310,239 +2194,14 @@
                 URL.revokeObjectURL(url);
             });
 
-            // ─────────────────────────────────────────────────────
-            // PARTICIPANT DETAILS — Admin-managed personal data
-            // ─────────────────────────────────────────────────────
 
-            // Load participant details
-            async function loadParticipantDetails() {
-                try {
-                    const result = await api('/api/admin/participant-details');
-                    if (result.success) {
-                        state.participantDetails = result.data || [];
-                        document.getElementById('participantDetailCount').textContent = `${state.participantDetails.length} total`;
-                        renderParticipantDetails(state.participantDetails);
-                    }
-                } catch (error) {
-                    console.error('Load participant details error:', error);
-                }
-            }
-
-            // Render participant details table
-            function renderParticipantDetails(details) {
-                const tbody = document.getElementById('participantDetailsTableBody');
-
-                if (!details || details.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="9" class="text-center text-muted">No participants added yet. Use the form above to add participants.</td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                tbody.innerHTML = details.map((p, idx) => {
-                    const token = p.attempt_token || '';
-                    const shortToken = token.length > 10 ? token.substring(0, 8) + '...' : (token || '-');
-                    const scoreDisplay = p.results ? `${p.results.totalScore}` : '-';
-                    const qualBadge = p.results?.qualified
-                        ? '<span class="badge badge-success" style="margin-left:4px;">Q</span>'
-                        : '';
-
-                    return `
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><strong>${p.name || '-'}</strong></td>
-                        <td>${p.college || '-'}</td>
-                        <td>${p.department || '-'}</td>
-                        <td>${p.phone || '-'}</td>
-                        <td>${p.email || '-'}</td>
-                        <td><code title="${token}">${shortToken}</code></td>
-                        <td>${scoreDisplay}${qualBadge}</td>
-                        <td>
-                            <div style="display:flex; gap:6px;">
-                                <button class="btn btn-sm btn-secondary" onclick="editParticipant('${p.id}')" title="Edit">✏️</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteParticipant('${p.id}', '${(p.name || '').replace(/'/g, "\\'")}')" title="Delete" style="background:hsla(0,70%,50%,0.2); color:hsl(0,80%,65%); border-color:hsla(0,70%,50%,0.3);">🗑️</button>
-                            </div>
-                        </td>
-                    </tr>
-                `}).join('');
-            }
-
-            // Add participant
-            document.getElementById('addParticipantForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                const data = {
-                    name: document.getElementById('pd-name').value,
-                    college: document.getElementById('pd-college').value,
-                    phone: document.getElementById('pd-phone').value,
-                    email: document.getElementById('pd-email').value,
-                    department: document.getElementById('pd-department').value,
-                    notes: document.getElementById('pd-notes').value,
-                    attempt_token: document.getElementById('pd-token').value || null
-                };
-
-                if (!data.name.trim()) {
-                    alert('Name is required');
-                    return;
-                }
-
-                try {
-                    const result = await api('/api/admin/participant-details', {
-                        method: 'POST',
-                        body: JSON.stringify(data)
-                    });
-
-                    if (result.success) {
-                        document.getElementById('addParticipantForm').reset();
-                        loadParticipantDetails();
-                    } else {
-                        alert(result.message || 'Failed to add participant');
-                    }
-                } catch (error) {
-                    console.error('Add participant error:', error);
-                    alert('Failed to add participant');
-                }
-            });
-
-            // Edit participant — open modal
-            window.editParticipant = function (id) {
-                const p = state.participantDetails.find(d => d.id === id);
-                if (!p) return;
-
-                document.getElementById('edit-pd-id').value = p.id;
-                document.getElementById('edit-pd-name').value = p.name || '';
-                document.getElementById('edit-pd-college').value = p.college || '';
-                document.getElementById('edit-pd-department').value = p.department || '';
-                document.getElementById('edit-pd-phone').value = p.phone || '';
-                document.getElementById('edit-pd-email').value = p.email || '';
-                document.getElementById('edit-pd-token').value = p.attempt_token || '';
-                document.getElementById('edit-pd-notes').value = p.notes || '';
-
-                document.getElementById('editParticipantModal').classList.remove('hidden');
-            };
-
-            // Close edit modal
-            const closeEditModal = () => document.getElementById('editParticipantModal').classList.add('hidden');
-            document.getElementById('closeEditParticipantModal')?.addEventListener('click', closeEditModal);
-            document.getElementById('cancelEditParticipant')?.addEventListener('click', closeEditModal);
-
-            // Edit participant — save
-            document.getElementById('editParticipantForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                const id = document.getElementById('edit-pd-id').value;
-                const data = {
-                    name: document.getElementById('edit-pd-name').value,
-                    college: document.getElementById('edit-pd-college').value,
-                    department: document.getElementById('edit-pd-department').value,
-                    phone: document.getElementById('edit-pd-phone').value,
-                    email: document.getElementById('edit-pd-email').value,
-                    attempt_token: document.getElementById('edit-pd-token').value || null,
-                    notes: document.getElementById('edit-pd-notes').value
-                };
-
-                try {
-                    const result = await api(`/api/admin/participant-details/${id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify(data)
-                    });
-
-                    if (result.success) {
-                        closeEditModal();
-                        loadParticipantDetails();
-                    } else {
-                        alert(result.message || 'Failed to update participant');
-                    }
-                } catch (error) {
-                    console.error('Update participant error:', error);
-                    alert('Failed to update participant');
-                }
-            });
-
-            // Delete participant
-            window.deleteParticipant = async function (id, name) {
-                const confirmed = await showConfirm(
-                    'Delete Participant',
-                    `Are you sure you want to delete "${name}"? This cannot be undone.`,
-                    '🗑️'
-                );
-
-                if (!confirmed) return;
-
-                try {
-                    const result = await api(`/api/admin/participant-details/${id}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (result.success) {
-                        loadParticipantDetails();
-                    } else {
-                        alert(result.message || 'Failed to delete participant');
-                    }
-                } catch (error) {
-                    console.error('Delete participant error:', error);
-                    alert('Failed to delete participant');
-                }
-            };
-
-            // Search participants
-            document.getElementById('participantSearchInput')?.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase().trim();
-                if (!query) {
-                    renderParticipantDetails(state.participantDetails);
-                    return;
-                }
-                const filtered = state.participantDetails.filter(p =>
-                    (p.name || '').toLowerCase().includes(query) ||
-                    (p.college || '').toLowerCase().includes(query) ||
-                    (p.phone || '').toLowerCase().includes(query) ||
-                    (p.email || '').toLowerCase().includes(query) ||
-                    (p.department || '').toLowerCase().includes(query)
-                );
-                renderParticipantDetails(filtered);
-            });
-
-            // Download Participant Details CSV
-            document.getElementById('downloadParticipantDetailsBtn')?.addEventListener('click', () => {
-                const data = state.participantDetails || [];
-                if (data.length === 0) {
-                    alert('No participants to download');
-                    return;
-                }
-                const csv = [
-                    ['#', 'Name', 'College', 'Department', 'Phone', 'Email', 'Attempt Token', 'Total Score', 'Notes'].join(','),
-                    ...data.map((p, i) => [
-                        i + 1,
-                        `"${(p.name || '').replace(/"/g, '""')}"`,
-                        `"${(p.college || '').replace(/"/g, '""')}"`,
-                        `"${(p.department || '').replace(/"/g, '""')}"`,
-                        `"${p.phone || ''}"`,
-                        `"${p.email || ''}"`,
-                        `"${p.attempt_token || ''}"`,
-                        p.results ? p.results.totalScore : '-',
-                        `"${(p.notes || '').replace(/"/g, '""')}"`
-                    ].join(','))
-                ].join('\n');
-
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `participant_details_${new Date().toISOString().split('T')[0]}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-
-            // Refresh participant details
-            document.getElementById('refreshParticipantDetails')?.addEventListener('click', loadParticipantDetails);
 
             // Load results
             async function loadResults(roundNumber) {
                 document.getElementById('resultsRoundNumber').textContent = roundNumber;
 
                 try {
+                    await loadTokenNameMap();
                     const result = await api(`/api/admin/results/${roundNumber}`);
 
                     if (result.success) {
@@ -2553,7 +2212,7 @@
                 }
             }
 
-            // Render results (V4: attempt_token based)
+            // Render results (V4: with participant names)
             function renderResults(results) {
                 const tbody = document.getElementById('resultsTableBody');
 
@@ -2567,12 +2226,11 @@
                 }
 
                 tbody.innerHTML = results.map(r => {
-                    const token = r.attempt_token || '-';
-                    const shortToken = token.length > 12 ? token.substring(0, 8) + '...' : token;
+                    const name = getNameForToken(r.attempt_token);
                     return `
                     <tr>
                         <td><strong>#${r.rank || '-'}</strong></td>
-                        <td><code title="${token}">${shortToken}</code></td>
+                        <td><strong>${name}</strong></td>
                         <td><strong>${r.score !== null && r.score !== undefined ? r.score : '-'}/15</strong></td>
                         <td>${r.time_taken_seconds ? formatTime(r.time_taken_seconds) : '-'}</td>
                         <td>
@@ -2604,6 +2262,9 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Loading combined results...</td></tr>';
 
                 try {
+                    // Load name map first
+                    await loadTokenNameMap();
+
                     const [r1, r2, r3] = await Promise.all([
                         api('/api/admin/results/1'),
                         api('/api/admin/results/2'),
@@ -2614,12 +2275,13 @@
 
                     [r1, r2, r3].forEach((result, index) => {
                         const roundNum = index + 1;
-                        if (result.success && result.data.results) {
+                        if (result.success && result.data && result.data.results) {
                             result.data.results.forEach(r => {
                                 const token = r.attempt_token || 'unknown';
                                 if (!tokenScores[token]) {
                                     tokenScores[token] = {
                                         attempt_token: token,
+                                        name: getNameForToken(token),
                                         round1: null, round2: null, round3: null,
                                         total: 0
                                     };
@@ -2639,11 +2301,10 @@
                     }
 
                     tbody.innerHTML = sortedResults.map((p, index) => {
-                        const shortToken = p.attempt_token.length > 12 ? p.attempt_token.substring(0, 8) + '...' : p.attempt_token;
                         return `
                         <tr>
                             <td><strong>#${index + 1}</strong></td>
-                            <td><code title="${p.attempt_token}">${shortToken}</code></td>
+                            <td><strong>${p.name}</strong></td>
                             <td>${p.round1 !== null ? p.round1 + '/15' : '-'}</td>
                             <td>${p.round2 !== null ? p.round2 + '/15' : '-'}</td>
                             <td>${p.round3 !== null ? p.round3 + '/15' : '-'}</td>
@@ -2664,6 +2325,8 @@
             // Export Combined Results - V4
             document.getElementById('exportCombinedResultsBtn')?.addEventListener('click', async () => {
                 try {
+                    await loadTokenNameMap();
+
                     const [r1, r2, r3] = await Promise.all([
                         api('/api/admin/results/1'),
                         api('/api/admin/results/2'),
@@ -2673,12 +2336,13 @@
                     const tokenScores = {};
                     [r1, r2, r3].forEach((result, index) => {
                         const roundNum = index + 1;
-                        if (result.success && result.data.results) {
+                        if (result.success && result.data && result.data.results) {
                             result.data.results.forEach(r => {
                                 const token = r.attempt_token || '';
                                 if (!tokenScores[token]) {
                                     tokenScores[token] = {
                                         attempt_token: token,
+                                        name: getNameForToken(token),
                                         round1: '', round2: '', round3: '',
                                         total: 0
                                     };
@@ -2692,9 +2356,9 @@
                     const sorted = Object.values(tokenScores).sort((a, b) => b.total - a.total);
 
                     const csv = [
-                        ['Rank', 'Attempt Token', 'Round 1', 'Round 2', 'Round 3', 'Total Score'].join(','),
+                        ['Rank', 'Participant Name', 'Round 1', 'Round 2', 'Round 3', 'Total Score'].join(','),
                         ...sorted.map((p, i) => [
-                            i + 1, `"${p.attempt_token}"`,
+                            i + 1, `"${p.name}"`,
                             p.round1 || 0, p.round2 || 0, p.round3 || 0, p.total
                         ].join(','))
                     ].join('\n');

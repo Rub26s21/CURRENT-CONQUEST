@@ -383,7 +383,93 @@
 
     <!-- Waiting Screen -->
     <div class="screen waiting-screen" id="waitingScreen">
-        <div class="waiting-animation"></div>
+        <div class="waiting-cartoon" id="waitingCartoon">
+            <!-- Cute animated cartoon owl waiting -->
+            <svg viewBox="0 0 200 200" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+                <!-- Floating stars -->
+                <g class="cartoon-stars">
+                    <text x="30" y="30" font-size="18" fill="#ffd700" opacity="0.8">
+                        ⭐
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite" />
+                        <animateTransform attributeName="transform" type="translate" values="0,0;5,-5;0,0" dur="3s"
+                            repeatCount="indefinite" />
+                    </text>
+                    <text x="160" y="50" font-size="14" fill="#ffd700" opacity="0.6">
+                        ✨
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
+                        <animateTransform attributeName="transform" type="translate" values="0,0;-3,-8;0,0" dur="2.5s"
+                            repeatCount="indefinite" />
+                    </text>
+                    <text x="20" y="150" font-size="12" fill="#ffd700" opacity="0.7">
+                        ✨
+                        <animate attributeName="opacity" values="1;0.3;1" dur="2.2s" repeatCount="indefinite" />
+                    </text>
+                </g>
+                <!-- Owl body -->
+                <g transform="translate(100,105)">
+                    <animateTransform attributeName="transform" type="translate" values="100,105;100,98;100,105"
+                        dur="2s" repeatCount="indefinite" />
+                    <!-- Body -->
+                    <ellipse cx="0" cy="20" rx="42" ry="45" fill="#8B6914" />
+                    <ellipse cx="0" cy="25" rx="32" ry="35" fill="#C4A55A" />
+                    <!-- Belly pattern -->
+                    <ellipse cx="0" cy="35" rx="20" ry="22" fill="#DFC87C" opacity="0.7" />
+                    <!-- Eyes -->
+                    <circle cx="-16" cy="-5" r="16" fill="white" stroke="#5C4A10" stroke-width="2" />
+                    <circle cx="16" cy="-5" r="16" fill="white" stroke="#5C4A10" stroke-width="2" />
+                    <!-- Pupils (blinking) -->
+                    <circle cx="-14" cy="-3" r="8" fill="#2C1810">
+                        <animate attributeName="ry" values="8;1;8" dur="3s" repeatCount="indefinite"
+                            keyTimes="0;0.03;1" />
+                    </circle>
+                    <circle cx="18" cy="-3" r="8" fill="#2C1810">
+                        <animate attributeName="ry" values="8;1;8" dur="3s" repeatCount="indefinite"
+                            keyTimes="0;0.03;1" />
+                    </circle>
+                    <!-- Eye shine -->
+                    <circle cx="-11" cy="-7" r="3" fill="white" opacity="0.8" />
+                    <circle cx="21" cy="-7" r="3" fill="white" opacity="0.8" />
+                    <!-- Beak -->
+                    <path d="M-5 8 L0 16 L5 8" fill="#FF8C00" stroke="#CC7000" stroke-width="1" />
+                    <!-- Eyebrows/Horns -->
+                    <path d="M-30 -18 Q-25 -30, -15 -20" fill="#5C4A10" stroke="none" />
+                    <path d="M30 -18 Q25 -30, 15 -20" fill="#5C4A10" stroke="none" />
+                    <!-- Wings -->
+                    <path d="M-42 10 Q-55 0, -45 -15 Q-40 5, -35 15" fill="#7A5C10" opacity="0.8">
+                        <animateTransform attributeName="transform" type="rotate" values="0 -42 10;-8 -42 10;0 -42 10"
+                            dur="2s" repeatCount="indefinite" />
+                    </path>
+                    <path d="M42 10 Q55 0, 45 -15 Q40 5, 35 15" fill="#7A5C10" opacity="0.8">
+                        <animateTransform attributeName="transform" type="rotate" values="0 42 10;8 42 10;0 42 10"
+                            dur="2s" repeatCount="indefinite" />
+                    </path>
+                    <!-- Feet -->
+                    <path d="M-15 62 L-22 70 M-15 62 L-15 72 M-15 62 L-8 70" stroke="#FF8C00" stroke-width="3"
+                        fill="none" stroke-linecap="round" />
+                    <path d="M15 62 L8 70 M15 62 L15 72 M15 62 L22 70" stroke="#FF8C00" stroke-width="3" fill="none"
+                        stroke-linecap="round" />
+                </g>
+                <!-- Zzz sleeping/waiting text -->
+                <g opacity="0.6">
+                    <text x="145" y="55" font-size="16" fill="#a0c4ff" font-weight="bold">z
+                        <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite" />
+                        <animateTransform attributeName="transform" type="translate" values="0,0;8,-12" dur="2s"
+                            repeatCount="indefinite" />
+                    </text>
+                    <text x="155" y="40" font-size="12" fill="#a0c4ff" font-weight="bold">z
+                        <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"
+                            begin="0.5s" />
+                        <animateTransform attributeName="transform" type="translate" values="0,0;5,-10" dur="2s"
+                            repeatCount="indefinite" begin="0.5s" />
+                    </text>
+                    <text x="162" y="28" font-size="10" fill="#a0c4ff" font-weight="bold">z
+                        <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite" begin="1s" />
+                        <animateTransform attributeName="transform" type="translate" values="0,0;4,-8" dur="2s"
+                            repeatCount="indefinite" begin="1s" />
+                    </text>
+                </g>
+            </svg>
+        </div>
         <h1 class="waiting-title" id="waitingTitle">Waiting for Round to Start</h1>
         <p class="waiting-message" id="waitingMessage">
             Please wait. The coordinator will start the round shortly.
@@ -463,8 +549,14 @@
             Your answers have been successfully submitted.
             Please wait for the results. Do not close this window.
         </p>
-        <div id="submissionInfo" style="color: var(--text-muted); font-size: 0.9rem;">
-            <p>Submitted at: <span id="submissionTime">-</span></p>
+        <div id="submissionInfo"
+            style="margin-top: var(--space-lg); padding: var(--space-lg) var(--space-xl); background: var(--surface-glass); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: var(--radius-lg); text-align: center;">
+            <p id="completionParticipantName"
+                style="font-size: 1.3rem; font-weight: 700; color: var(--primary-light); margin-bottom: var(--space-sm);">
+            </p>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                Submitted at: <span id="submissionTime" style="font-weight: 600; color: var(--text-primary);">-</span>
+            </p>
         </div>
     </div>
 
@@ -958,6 +1050,13 @@
                             'Your answers have been successfully submitted. Please wait for the results.';
                     }
                     elements.submissionTime.textContent = new Date().toLocaleTimeString();
+
+                    // Show participant name on completion screen
+                    const participantName = localStorage.getItem('qc_p_name');
+                    const nameEl = document.getElementById('completionParticipantName');
+                    if (participantName && nameEl) {
+                        nameEl.textContent = participantName;
+                    }
 
                     // ──────────────────────────────────────────────
                     // Send to backend (fire-and-forget with retry)
