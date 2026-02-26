@@ -527,11 +527,7 @@
 </head>
 
 <body>
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">☰</button>
-
-    <!-- Sidebar Overlay (for mobile) -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <!-- Mobile Menu Toggle moved into dashboardScreen -->
 
     <!-- 3D Canvas Container -->
     <div id="canvas-container"></div>
@@ -595,6 +591,10 @@
 
     <!-- Admin Dashboard -->
     <div class="screen admin-layout" id="dashboardScreen">
+        <!-- Mobile Menu Controls (Moved here for z-index context) -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">☰</button>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
         <!-- Sidebar -->
         <aside class="admin-sidebar">
             <div class="sidebar-header">

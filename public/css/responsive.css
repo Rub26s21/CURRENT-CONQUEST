@@ -504,6 +504,7 @@ html {
     /* Mobile menu toggle */
     .mobile-menu-toggle {
         display: flex;
+        z-index: 1001;
     }
 
     /* Admin sidebar — off-canvas */
