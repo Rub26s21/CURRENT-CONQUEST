@@ -1,0 +1,1042 @@
+/**
+ * Quiz Contest — Comprehensive Responsive CSS
+ * Mobile-First Design | All Breakpoints
+ * Covers: Landing, Exam, Admin pages
+ */
+
+/* ============================================
+   GLOBAL RESPONSIVE FOUNDATION
+   ============================================ */
+
+/* Prevent horizontal scroll everywhere */
+html,
+body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Safe area for notched devices */
+body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Prevent body scroll when modal/sidebar is open */
+body.modal-open,
+body.sidebar-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+/* All images are responsive by default */
+img,
+svg,
+video,
+canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ============================================
+   MOBILE-FIRST BASE (320px+)
+   ============================================ */
+
+/* Typography — scalable minimum */
+html {
+    font-size: clamp(14px, 3.5vw, 16px);
+}
+
+/* Buttons — touch-friendly minimum */
+.btn {
+    min-height: 44px;
+    padding: 0.625rem 1rem;
+    font-size: 0.9rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+    transform: scale(0.96) !important;
+    transition: transform 0.1s ease;
+}
+
+.btn:disabled {
+    pointer-events: none;
+}
+
+.btn-sm {
+    min-height: 36px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn-lg {
+    min-height: 48px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Forms — accessible sizing */
+.form-input,
+.form-select,
+.form-textarea {
+    min-height: 44px;
+    font-size: 1rem;
+    /* Prevents iOS zoom on focus */
+    padding: 0.75rem 1rem;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Cards — no overflow */
+.card,
+.stat-card,
+.question-card,
+.login-card {
+    max-width: 100%;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Tables — always scrollable horizontally */
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+.table {
+    min-width: 500px;
+}
+
+/* No text overflow for labels/badges */
+.badge,
+.stat-label,
+.form-label {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* ============================================
+   MODAL RESPONSIVE (All Sizes)
+   ============================================ */
+
+.modal-overlay {
+    padding: 1rem;
+}
+
+.modal {
+    width: calc(100% - 2rem);
+    max-width: 500px;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-footer {
+    flex-wrap: wrap;
+}
+
+.modal-footer .btn {
+    flex: 1;
+    min-width: 100px;
+}
+
+/* Confirm dialog buttons */
+.confirm-actions {
+    flex-wrap: wrap;
+}
+
+.confirm-actions .btn {
+    flex: 1;
+    min-width: 120px;
+}
+
+/* ============================================
+   EXAM TIMER — Fixed width for stable layout
+   ============================================ */
+
+.exam-timer {
+    min-width: 110px;
+    text-align: center;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+    /* Tabular nums prevent layout shift on digit change */
+}
+
+#timerDisplay {
+    font-variant-numeric: tabular-nums;
+    min-width: 4.5ch;
+    display: inline-block;
+    text-align: right;
+}
+
+/* ============================================
+   WARNING OVERLAY — Always safe
+   ============================================ */
+
+.warning-overlay {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.warning-overlay .warning-text {
+    max-width: 90vw;
+}
+
+/* ============================================
+   BREAKPOINT: SMALL MOBILE (max-width: 480px)
+   ============================================ */
+
+@media (max-width: 480px) {
+
+    /* Container padding */
+    .container {
+        padding: 0 0.75rem;
+    }
+
+    /* Typography */
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    h3 {
+        font-size: 1.1rem;
+    }
+
+    h4 {
+        font-size: 1rem;
+    }
+
+    /* Stats grid — single column */
+    .stats-grid,
+    .dashboard-stats {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+
+    .stat-card {
+        padding: 0.75rem !important;
+    }
+
+    .stat-value {
+        font-size: 1.25rem !important;
+    }
+
+    .stat-label {
+        font-size: 0.75rem !important;
+    }
+
+    .stat-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.2rem !important;
+    }
+
+    /* Admin */
+    .admin-main {
+        padding: 0.75rem !important;
+        padding-top: 4rem !important;
+    }
+
+    .admin-title {
+        font-size: 1.1rem !important;
+    }
+
+    .admin-actions {
+        gap: 0.5rem !important;
+        flex-wrap: wrap;
+    }
+
+    .admin-actions .btn {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+    }
+
+    /* Badge compact */
+    .badge {
+        padding: 0.2rem 0.5rem !important;
+        font-size: 0.65rem !important;
+    }
+
+    /* Exam Header */
+    .exam-header-content {
+        padding: 0.5rem 0.75rem !important;
+        gap: 0.5rem;
+    }
+
+    .exam-round-badge {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.5rem;
+    }
+
+    .exam-timer {
+        font-size: 1rem !important;
+        padding: 0.25rem 0.5rem !important;
+        min-width: 90px;
+    }
+
+    .participant-info {
+        display: none !important;
+    }
+
+    /* Question card */
+    .question-card {
+        padding: 1rem !important;
+        border-radius: 14px !important;
+    }
+
+    .question-text {
+        font-size: 0.95rem !important;
+        line-height: 1.5;
+    }
+
+    .question-number {
+        font-size: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Options */
+    .option-label {
+        padding: 0.75rem !important;
+        gap: 0.5rem;
+    }
+
+    .option-indicator {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+    }
+
+    .option-text {
+        font-size: 0.9rem;
+    }
+
+    /* Exam actions */
+    .exam-actions {
+        flex-direction: column;
+    }
+
+    .exam-actions .btn {
+        width: 100%;
+    }
+
+    /* Exam progress */
+    .exam-progress-info {
+        font-size: 0.8rem;
+    }
+
+    /* Completion screen */
+    .completion-icon {
+        width: 70px;
+        height: 70px;
+        font-size: 2rem;
+    }
+
+    .completion-title {
+        font-size: 1.5rem;
+    }
+
+    .completion-message {
+        font-size: 0.95rem;
+    }
+
+    /* Waiting screen */
+    .waiting-title {
+        font-size: 1.5rem;
+    }
+
+    .waiting-message {
+        font-size: 0.95rem;
+    }
+
+    .waiting-cartoon svg {
+        width: 120px;
+        height: 120px;
+    }
+
+    /* Warning overlay */
+    .warning-icon-large {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+
+    .warning-title {
+        font-size: 1.5rem !important;
+    }
+
+    .warning-text {
+        font-size: 0.95rem !important;
+    }
+
+    /* Login page */
+    .login-container {
+        max-width: 100%;
+    }
+
+    .login-card {
+        padding: 1.25rem !important;
+    }
+
+    .login-header h1 {
+        font-size: 1.75rem !important;
+    }
+
+    /* Tab navigation — scrollable */
+    .tab-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        gap: 0.25rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .tab-btn {
+        flex: 0 0 auto;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.8rem !important;
+        white-space: nowrap;
+    }
+
+    /* File upload area */
+    .file-upload-area {
+        padding: 1rem !important;
+    }
+
+    /* Cards */
+    .card-header,
+    .card-body,
+    .card-footer {
+        padding: 0.75rem !important;
+    }
+
+    /* Round control buttons */
+    .round-control {
+        padding: 0.75rem !important;
+    }
+
+    .round-control-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .round-control-header>div {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Forms */
+    .form-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .options-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .question-form-container {
+        padding: 0.75rem !important;
+    }
+
+    /* Inline timer input in round cards */
+    input[type="number"][id^="timerInput"] {
+        width: 70px !important;
+        font-size: 0.85rem;
+    }
+
+    /* Modal full screen on small mobile */
+    .modal {
+        width: 100% !important;
+        max-height: 100vh;
+        max-height: 100dvh;
+        border-radius: 0 !important;
+        margin: 0;
+    }
+
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .confirm-actions {
+        flex-direction: column;
+    }
+
+    .confirm-actions .btn {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   BREAKPOINT: MOBILE (max-width: 768px)
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Container */
+    .container {
+        padding: 0 1rem;
+    }
+
+    /* Typography */
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+    }
+
+    h3 {
+        font-size: 1.2rem;
+    }
+
+    /* Mobile menu toggle */
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
+    /* Admin sidebar — off-canvas */
+    .admin-sidebar {
+        position: fixed !important;
+        left: -280px;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        overflow-y: auto;
+    }
+
+    .admin-sidebar.open {
+        left: 0;
+    }
+
+    /* Sidebar overlay */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(4px);
+        z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    /* Admin main — full width */
+    .admin-main {
+        margin-left: 0 !important;
+        padding: 1rem !important;
+        padding-top: 4rem !important;
+    }
+
+    /* Stats grid */
+    .stats-grid,
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+    }
+
+    .stat-card {
+        padding: 1rem !important;
+    }
+
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+
+    /* Round cards — single column */
+    .round-cards {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.625rem 1rem !important;
+        font-size: 0.9rem !important;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Round control */
+    .round-control {
+        padding: 1rem !important;
+    }
+
+    .round-control-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .round-control-header>div {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Tables */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        min-width: 600px;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.625rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    /* Question form */
+    .question-form-container {
+        padding: 1rem !important;
+    }
+
+    .form-row,
+    .options-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Admin header */
+    .admin-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start !important;
+    }
+
+    .admin-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .admin-title {
+        font-size: 1.25rem !important;
+    }
+
+    /* Card body */
+    .card-body {
+        padding: 1rem !important;
+    }
+
+    /* Tab navigation — horizontal scroll */
+    .tab-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        flex-wrap: nowrap;
+        padding-bottom: 0.5rem;
+    }
+
+    .tab-btn {
+        flex: 0 0 auto;
+        padding: 0.5rem 1rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* File upload area */
+    .file-upload-area {
+        padding: 1.25rem !important;
+    }
+
+    /* Results header */
+    .results-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    /* Login page */
+    .login-box {
+        padding: 0 1rem;
+    }
+
+    .login-box .card {
+        padding: 1.5rem !important;
+    }
+
+    /* Hide 3D canvas on mobile for performance */
+    #canvas-container {
+        display: none !important;
+    }
+
+    /* Pastel fallback background */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, #eef0ff 0%, #e6eaff 35%, #fff2eb 65%, #f7f0ff 100%);
+        z-index: -1;
+    }
+
+    /* ── EXAM PAGE MOBILE ── */
+
+    /* Header — compact row */
+    .exam-header-content {
+        padding: 0.5rem 1rem !important;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+    }
+
+    .exam-timer {
+        font-size: 1.1rem;
+        padding: 0.25rem 0.75rem;
+    }
+
+    .exam-round-badge {
+        font-size: 0.75rem;
+    }
+
+    /* Participant info — simplified */
+    .participant-info {
+        flex-direction: column;
+        align-items: flex-end !important;
+        gap: 0 !important;
+        max-width: 120px;
+    }
+
+    #pNameDisplay {
+        font-size: 0.75rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100px;
+    }
+
+    #pCollegeDisplay {
+        display: none !important;
+    }
+
+    .participant-info>div:last-child {
+        display: none !important;
+    }
+
+    /* Exam content */
+    .exam-main {
+        padding-top: 60px;
+    }
+
+    .exam-content {
+        padding: 1rem;
+    }
+
+    .exam-question-container {
+        max-width: 100%;
+    }
+
+    /* Question card */
+    .question-card {
+        padding: 1.25rem !important;
+    }
+
+    .question-text {
+        font-size: 1rem !important;
+        line-height: 1.6;
+    }
+
+    /* Options — stacked vertically */
+    .options-list {
+        gap: 0.75rem;
+    }
+
+    .option-label {
+        padding: 0.875rem !important;
+    }
+
+    /* Exam action buttons — full width */
+    .exam-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .exam-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Progress info */
+    .exam-progress-info {
+        font-size: 0.85rem;
+    }
+
+    /* Warning overlay */
+    .warning-overlay {
+        padding: 1.5rem;
+    }
+
+    .warning-icon-large {
+        width: 64px;
+        height: 64px;
+        font-size: 2rem;
+    }
+
+    .warning-title {
+        font-size: 1.75rem !important;
+    }
+
+    .warning-text {
+        font-size: 1rem !important;
+    }
+
+    /* Completion & Waiting screens */
+    .completion-screen,
+    .waiting-screen {
+        padding: 1.5rem;
+    }
+
+    .completion-title,
+    .waiting-title {
+        font-size: 1.75rem;
+    }
+
+    .completion-message,
+    .waiting-message {
+        font-size: 1rem;
+        max-width: 100%;
+    }
+
+    /* Submission info box */
+    #submissionInfo {
+        padding: 1rem !important;
+        margin: 1rem 0 !important;
+    }
+
+    /* Background logos — minimize on mobile */
+    .background-logo {
+        width: 80vw !important;
+        max-width: 300px !important;
+        opacity: 0.04 !important;
+    }
+
+    .logo-cc {
+        display: none !important;
+    }
+
+    /* Login page mascot */
+    .login-header img {
+        width: 80px !important;
+    }
+}
+
+/* ============================================
+   BREAKPOINT: TABLET (769px - 1023px)
+   ============================================ */
+
+@media (min-width: 769px) and (max-width: 1023px) {
+
+    /* Container */
+    .container {
+        padding: 0 1.5rem;
+    }
+
+    /* Admin layout */
+    .admin-main {
+        padding: 1rem !important;
+    }
+
+    /* Stats grid */
+    .stats-grid,
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
+    }
+
+    /* Round cards */
+    .round-cards {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Forms */
+    .form-row,
+    .options-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Admin header */
+    .admin-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start !important;
+    }
+
+    .admin-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    /* Exam question container */
+    .exam-question-container {
+        max-width: 700px;
+    }
+
+    /* Options 2-col if space */
+    .options-list {
+        gap: 0.75rem;
+    }
+}
+
+/* ============================================
+   BREAKPOINT: DESKTOP (1024px+)
+   ============================================ */
+
+@media (min-width: 1024px) {
+    html {
+        font-size: 16px;
+    }
+
+    /* Restore card hover effects (disabled on touch) */
+    .login-card:hover,
+    .card:hover,
+    .stat-card:hover {
+        transform: translateY(-6px) scale(1.01);
+    }
+
+    /* Desktop-specific exam layout */
+    .exam-question-container {
+        max-width: 800px;
+    }
+
+    /* Ensure exam actions align right */
+    .exam-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    /* Stats grid — auto fill */
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    /* Admin sidebar stays visible */
+    .mobile-menu-toggle {
+        display: none !important;
+    }
+
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   BREAKPOINT: LARGE DESKTOP (1440px+)
+   ============================================ */
+
+@media (min-width: 1440px) {
+    .container {
+        max-width: 1320px;
+    }
+
+    .exam-question-container {
+        max-width: 900px;
+    }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE ORIENTATION
+   ============================================ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .admin-main {
+        padding-top: 1rem !important;
+    }
+
+    .mobile-menu-toggle {
+        top: 0.5rem;
+    }
+
+    /* Compact exam header in landscape */
+    .exam-header-content {
+        padding: 0.25rem 1rem !important;
+    }
+
+    .exam-timer {
+        font-size: 1rem;
+    }
+
+    /* Question card — compact */
+    .question-card {
+        padding: 1rem !important;
+    }
+
+    .question-text {
+        font-size: 0.95rem !important;
+    }
+
+    .option-label {
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    /* Waiting/Completion — scroll */
+    .waiting-screen,
+    .completion-screen {
+        min-height: auto;
+        padding: 1rem;
+    }
+}
+
+/* ============================================
+   PRINT STYLES (just in case)
+   ============================================ */
+
+@media print {
+
+    .admin-sidebar,
+    .mobile-menu-toggle,
+    .sidebar-overlay,
+    .exam-timer,
+    #canvas-container,
+    .background-logo {
+        display: none !important;
+    }
+
+    .admin-main {
+        margin-left: 0 !important;
+    }
+
+    body {
+        background: white !important;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY: REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .background-logo {
+        animation: none !important;
+    }
+
+    .login-card:hover,
+    .card:hover,
+    .stat-card:hover {
+        transform: none;
+    }
+}
