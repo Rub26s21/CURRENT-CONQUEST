@@ -1,14 +1,14 @@
 /**
- * Quiz Conquest - Liquid Monochrome Theme
- * Black & White High-End Design
+ * Quiz Conquest - White Glassmorphism Theme
+ * Frosted Glass + Pastel Cartoons Design
  */
 
 /* ============================================
-   LIQUID MONOCHROME THEME
-   Black & White with Fluid Metal Animations
+   WHITE GLASSMORPHISM THEME
+   Frosted Glass with Cartoon Animations
    ============================================ */
 
-/* 3D Animation Background Container */
+/* 3D Animation Background Container — Replaced with pastel gradient */
 #canvas-container {
     position: fixed;
     top: 0;
@@ -16,13 +16,13 @@
     width: 100%;
     height: 100%;
     z-index: 0;
-    background: #000000;
+    background: linear-gradient(135deg, #eef0ff 0%, #e6eaff 20%, #fff2eb 45%, #eef6ff 70%, #f7f0ff 100%);
     overflow: hidden;
     will-change: transform;
     pointer-events: none;
 }
 
-/* Ensure all interactive content is above the 3D background */
+/* Ensure all interactive content is above the background */
 .loading-screen,
 .admin-login,
 .admin-layout,
@@ -31,13 +31,13 @@
     z-index: 10;
 }
 
-/* Base UI Styles */
+/* Base UI Styles — White Theme */
 body {
-    background-color: #000 !important;
-    color: #fff !important;
+    background-color: #f2f4ff !important;
+    color: hsl(230, 25%, 18%) !important;
 }
 
-/* Floating orbs - hide on mobile */
+/* Floating orbs — replaced with cartoon theme orbs */
 .floating-orbs,
 .cyber-grid,
 .hex-pattern {
@@ -45,7 +45,83 @@ body {
     pointer-events: none;
 }
 
-/* Glassmorphism Cards - Monochrome */
+/* ============================================
+   FLOATING CARTOON CHARACTERS (Page Background)
+   ============================================ */
+
+/* Page-level cartoon background animations */
+.login-page::before,
+.login-page::after,
+.exam-main::before,
+.exam-main::after,
+.admin-main::before,
+.admin-main::after {
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    font-size: 3rem;
+    opacity: 0;
+    animation: pageBgFloat 8s ease-in-out infinite;
+}
+
+.login-page::before,
+.exam-main::before,
+.admin-main::before {
+    content: '🎓';
+    top: 15%;
+    left: 8%;
+    animation-delay: 0.5s;
+}
+
+.login-page::after,
+.exam-main::after,
+.admin-main::after {
+    content: '🏆';
+    bottom: 20%;
+    right: 10%;
+    animation-delay: 2.5s;
+}
+
+/* Extra cartoon elements */
+.login-page-extra::before,
+.exam-page-extra::before {
+    content: '💡';
+    top: 40%;
+    right: 5%;
+    position: fixed;
+    font-size: 2.5rem;
+    opacity: 0.3;
+    animation: pageBgFloat 10s ease-in-out infinite reverse;
+}
+
+.login-page-extra::after,
+.exam-page-extra::after {
+    content: '✏️';
+    bottom: 40%;
+    left: 5%;
+    position: fixed;
+    font-size: 2.5rem;
+    opacity: 0.3;
+    animation: pageBgFloat 12s ease-in-out infinite 1s;
+}
+
+@keyframes pageBgFloat {
+
+    0%,
+    100% {
+        opacity: 0.25;
+        transform: translateY(0) rotate(0deg);
+    }
+
+    50% {
+        opacity: 0.4;
+        transform: translateY(-20px) rotate(8deg);
+    }
+}
+
+/* ============================================
+   GLASSMORPHISM CARDS — White Frosted Glass
+   ============================================ */
 .login-card,
 .admin-sidebar,
 .admin-control-panel,
@@ -62,16 +138,16 @@ body {
 .waiting-screen,
 .completion-screen,
 .exam-header-content {
-    background: rgba(10, 10, 10, 0.92) !important;
-    backdrop-filter: blur(20px) saturate(0%);
-    -webkit-backdrop-filter: blur(20px) saturate(0%);
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.55) !important;
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1.5px solid rgba(255, 255, 255, 0.7) !important;
     box-shadow:
-        0 25px 50px -12px rgba(0, 0, 0, 0.9),
-        0 0 0 1px rgba(255, 255, 255, 0.05),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 8px 32px rgba(120, 130, 180, 0.1),
+        0 2px 8px rgba(120, 130, 180, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
     border-radius: 20px !important;
-    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     position: relative;
     z-index: 10;
 }
@@ -80,63 +156,98 @@ body {
 .login-card:hover,
 .card:hover,
 .stat-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-8px) scale(1.02);
     box-shadow:
-        0 30px 60px -15px rgba(0, 0, 0, 1),
-        0 0 0 1px rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3) !important;
+        0 24px 64px rgba(120, 130, 180, 0.2),
+        0 8px 24px rgba(120, 130, 180, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    border-color: rgba(167, 139, 250, 0.5) !important;
+}
+
+/* Cartoon Bounce Animation for Buttons */
+.btn:active {
+    transform: scale(0.92) !important;
+}
+
+.btn-primary:hover {
+    animation: cartoonBounce 0.5s ease;
+}
+
+@keyframes cartoonBounce {
+    0% {
+        transform: scale(1);
+    }
+
+    30% {
+        transform: scale(1.1) rotate(-1deg);
+    }
+
+    50% {
+        transform: scale(0.95) rotate(1deg);
+    }
+
+    70% {
+        transform: scale(1.05) rotate(-0.5deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0);
+    }
 }
 
 /* Inputs */
 .form-input,
 .form-select,
 .form-textarea {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    color: #fff !important;
-    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+    border: 1.5px solid rgba(180, 190, 230, 0.4) !important;
+    color: hsl(230, 25%, 18%) !important;
+    border-radius: 10px !important;
     transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
 }
 
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: #fff !important;
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: hsl(250, 70%, 58%) !important;
+    box-shadow: 0 0 0 3px hsla(250, 70%, 58%, 0.18);
     outline: none;
 }
 
 .form-input::placeholder {
-    color: rgba(255, 255, 255, 0.3) !important;
+    color: hsl(230, 10%, 60%) !important;
 }
 
 /* Buttons */
 .btn-primary {
-    background: #fff !important;
-    color: #000 !important;
+    background: linear-gradient(135deg, hsl(250, 70%, 58%), hsl(280, 60%, 55%)) !important;
+    color: #fff !important;
     border: none !important;
     font-weight: 600 !important;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 16px hsla(250, 70%, 58%, 0.3);
 }
 
 .btn-primary:hover {
-    background: #e0e0e0 !important;
+    background: linear-gradient(135deg, hsl(250, 70%, 65%), hsl(280, 60%, 62%)) !important;
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 24px hsla(250, 70%, 58%, 0.35);
 }
 
 .btn-secondary {
-    background: transparent !important;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    color: #fff !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+    border: 1.5px solid rgba(180, 190, 230, 0.4) !important;
+    color: hsl(230, 25%, 25%) !important;
+    backdrop-filter: blur(12px);
 }
 
 .btn-secondary:hover {
-    border-color: #fff !important;
-    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: hsl(250, 70%, 58%) !important;
+    background: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Text & Typography */
@@ -145,113 +256,125 @@ h2,
 h3,
 h4,
 h5,
-h6,
-.title-gradient {
-    color: #fff !important;
+h6 {
+    color: hsl(230, 25%, 18%) !important;
     background: none !important;
-    -webkit-text-fill-color: #fff !important;
+    -webkit-text-fill-color: hsl(230, 25%, 18%) !important;
     font-weight: 700;
     letter-spacing: -0.02em;
 }
 
+.title-gradient {
+    background: linear-gradient(135deg, hsl(250, 70%, 58%), hsl(20, 90%, 62%)) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+}
+
 .text-muted {
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: hsl(230, 10%, 55%) !important;
 }
 
 label {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: hsl(230, 15%, 38%) !important;
 }
 
 /* Navigation */
 .admin-sidebar {
-    background: rgba(5, 5, 5, 0.98) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-right: 1px solid rgba(180, 190, 230, 0.3) !important;
     z-index: 100;
+    backdrop-filter: blur(20px) !important;
 }
 
 .nav-item {
-    color: rgba(255, 255, 255, 0.6) !important;
-    border-radius: 8px;
+    color: hsl(230, 15%, 42%) !important;
+    border-radius: 10px;
     margin-bottom: 4px;
 }
 
 .nav-item:hover {
-    color: #fff !important;
-    background: rgba(255, 255, 255, 0.1) !important;
+    color: hsl(230, 25%, 18%) !important;
+    background: rgba(167, 139, 250, 0.1) !important;
 }
 
 .nav-item.active {
-    color: #000 !important;
-    background: #fff !important;
+    color: #fff !important;
+    background: linear-gradient(135deg, hsl(250, 70%, 58%), hsl(280, 60%, 55%)) !important;
     font-weight: 600;
+    box-shadow: 0 4px 12px hsla(250, 70%, 58%, 0.25);
 }
 
 /* Tables */
 .table th {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: #fff !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: rgba(240, 242, 255, 0.7) !important;
+    color: hsl(230, 15%, 38%) !important;
+    border-bottom: 1px solid rgba(180, 190, 230, 0.3) !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-size: 0.75rem;
 }
 
 .table td {
-    color: rgba(255, 255, 255, 0.8) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: hsl(230, 20%, 25%) !important;
+    border-bottom: 1px solid rgba(180, 190, 230, 0.15) !important;
 }
 
 .table tr:hover td {
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: rgba(167, 139, 250, 0.04) !important;
 }
 
 /* Loading Screen */
 .loading-screen {
-    background: #000 !important;
+    background: #f0f2ff !important;
     z-index: 9999;
 }
 
 .loading-screen .logo-icon {
-    background: #fff !important;
-    color: #000 !important;
-    box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+    background: linear-gradient(135deg, hsl(250, 70%, 58%), hsl(280, 60%, 55%)) !important;
+    color: #fff !important;
+    box-shadow: 0 0 30px hsla(250, 70%, 58%, 0.3);
 }
 
 .spinner {
-    border-color: rgba(255, 255, 255, 0.1);
-    border-top-color: #fff;
+    border-color: rgba(180, 190, 230, 0.3);
+    border-top-color: hsl(250, 70%, 58%);
 }
 
 /* Badges */
 .badge {
-    color: #000 !important;
-    background: #fff !important;
     font-weight: 600;
 }
 
+.badge-primary {
+    background: hsla(250, 70%, 58%, 0.12) !important;
+    color: hsl(250, 70%, 48%) !important;
+}
+
 .badge-neutral {
-    background: rgba(255, 255, 255, 0.2) !important;
-    color: #fff !important;
+    background: rgba(180, 190, 220, 0.15) !important;
+    color: hsl(230, 15%, 42%) !important;
 }
 
 .badge-warning {
-    background: #f39c12 !important;
-    color: #000 !important;
+    background: hsla(40, 95%, 52%, 0.12) !important;
+    color: hsl(30, 80%, 40%) !important;
 }
 
 .badge-success {
-    background: #27ae60 !important;
-    color: #fff !important;
+    background: hsla(160, 60%, 42%, 0.12) !important;
+    color: hsl(160, 60%, 35%) !important;
 }
 
 .badge-danger {
-    background: #e74c3c !important;
-    color: #fff !important;
+    background: hsla(0, 70%, 58%, 0.12) !important;
+    color: hsl(0, 70%, 48%) !important;
 }
 
 /* Admin Main Content Area */
 .admin-main {
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(240, 242, 255, 0.4);
+    backdrop-filter: blur(4px);
     min-height: 100vh;
     position: relative;
     z-index: 10;
@@ -259,30 +382,50 @@ label {
 
 /* Section titles */
 .admin-header {
-    background: rgba(10, 10, 10, 0.8);
+    background: rgba(255, 255, 255, 0.5);
     padding: 1rem 1.5rem;
-    border-radius: 12px;
+    border-radius: 16px;
     margin-bottom: 1.5rem;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar — Light theme */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #000;
+    background: rgba(240, 242, 255, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #333;
+    background: rgba(167, 139, 250, 0.3);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #666;
+    background: rgba(167, 139, 250, 0.5);
 }
+
+/* ============================================
+   FLOATING DECORATIONS (Added behind all content)
+   ============================================ */
+
+/* Global floating emoji background */
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(ellipse at 10% 90%, hsla(160, 60%, 80%, 0.2) 0%, transparent 40%),
+        radial-gradient(ellipse at 90% 20%, hsla(270, 60%, 80%, 0.2) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 50%, hsla(30, 60%, 90%, 0.15) 0%, transparent 50%);
+}
+
 
 /* ============================================
    MOBILE RESPONSIVE STYLES
@@ -297,14 +440,16 @@ label {
     z-index: 1000;
     width: 44px;
     height: 44px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    color: #fff;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1.5px solid rgba(180, 190, 230, 0.3);
+    border-radius: 12px;
+    color: hsl(230, 25%, 25%);
     font-size: 1.5rem;
     cursor: pointer;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(120, 130, 180, 0.1);
 }
 
 /* Tablet Styles */
@@ -377,7 +522,8 @@ label {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(100, 110, 160, 0.25);
+        backdrop-filter: blur(4px);
         z-index: 999;
     }
 
@@ -452,12 +598,11 @@ label {
         padding: 1rem !important;
     }
 
-    /* Hide 3D background on mobile for performance */
+    /* Pastel gradient background on mobile */
     #canvas-container {
         display: none;
     }
 
-    /* Simple gradient background instead */
     body::before {
         content: '';
         position: fixed;
@@ -465,7 +610,7 @@ label {
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+        background: linear-gradient(135deg, #eef0ff 0%, #e6eaff 35%, #fff2eb 65%, #f7f0ff 100%);
         z-index: -1;
     }
 

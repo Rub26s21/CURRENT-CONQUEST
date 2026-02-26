@@ -32,11 +32,11 @@
             transform: translate(-50%, -50%) perspective(1000px) rotateY(-5deg) rotateX(5deg);
             width: 60vw;
             max-width: 600px;
-            opacity: 0.15;
+            opacity: 0.08;
             z-index: 0;
             pointer-events: none;
             animation: float3d 8s ease-in-out infinite;
-            filter: drop-shadow(0 0 60px rgba(255, 107, 53, 0.4));
+            filter: drop-shadow(0 0 60px rgba(167, 139, 250, 0.25));
         }
 
         .background-logo img {
@@ -72,7 +72,7 @@
             right: 25%;
             width: 80px;
             height: 120px;
-            background: radial-gradient(ellipse at center, rgba(255, 166, 0, 0.4) 0%, rgba(255, 107, 53, 0.2) 40%, transparent 70%);
+            background: radial-gradient(ellipse at center, rgba(167, 139, 250, 0.25) 0%, rgba(147, 197, 253, 0.15) 40%, transparent 70%);
             border-radius: 50% 50% 50% 50%;
             filter: blur(20px);
             animation: flameGlow 2s ease-in-out infinite alternate;
@@ -92,7 +92,7 @@
 
         body {
             background: transparent !important;
-            color: #fff;
+            color: hsl(230, 25%, 18%);
         }
 
         .exam-header {
@@ -183,7 +183,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: hsla(0, 0%, 0%, 0.9);
+            background: hsla(230, 20%, 92%, 0.92);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -280,11 +280,11 @@
 
             <!-- VSBEC Text -->
             <text x="80" y="70" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="600"
-                fill="rgba(255,255,255,0.9)" letter-spacing="8">VSBEC</text>
+                fill="rgba(100,110,180,0.6)" letter-spacing="8">VSBEC</text>
 
             <!-- Kanal Text (Large) -->
             <text x="50" y="130" font-family="Inter, Arial, sans-serif" font-size="60" font-weight="700"
-                fill="rgba(255,255,255,0.95)" letter-spacing="2">Kanal</text>
+                fill="rgba(100,110,180,0.6)" letter-spacing="2">Kanal</text>
 
             <!-- Torch -->
             <g transform="translate(240, 40)">
@@ -312,7 +312,7 @@
 
             <!-- 2026 Text -->
             <text x="220" y="170" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="600"
-                fill="rgba(255,255,255,0.85)" letter-spacing="4">2026</text>
+                fill="rgba(100,110,180,0.5)" letter-spacing="4">2026</text>
         </svg>
     </div>
 
@@ -1236,226 +1236,114 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         /**
-         * Isometric Cyber Platform Animation
-         * Based on user reference: Layered glass/tech platform in Blue/Cyan theme
+         * White Glassmorphism 3D Background — Exam Page
+         * Frosted Glass Platforms & Floating Pastel Sparkles
          */
         (function () {
             const container = document.getElementById('canvas-container');
+            if (!container) return;
+
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050a14);
-            scene.fog = new THREE.FogExp2(0x050a14, 0.02);
+            scene.background = new THREE.Color(0xf0f2ff);
+            scene.fog = new THREE.Fog(0xf0f2ff, 18, 65);
 
-            const aspect = window.innerWidth / window.innerHeight;
-            const d = 20;
-            const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
-
-            camera.position.set(20, 20, 20);
-            camera.lookAt(scene.position);
+            const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 8, 22);
+            camera.lookAt(0, 0, 0);
 
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
             container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            // Soft Lighting
+            const ambientLight = new THREE.AmbientLight(0xe8ecff, 0.9);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
             dirLight.position.set(10, 20, 10);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
 
-            const blueLight = new THREE.PointLight(0x0088ff, 2, 50);
-            blueLight.position.set(-5, 10, -5);
-            scene.add(blueLight);
+            const lavLight = new THREE.PointLight(0xc4b5fd, 1.0, 60);
+            lavLight.position.set(-10, 8, -5);
+            scene.add(lavLight);
 
-            const cyanLight = new THREE.PointLight(0x00ffff, 1.5, 40);
-            cyanLight.position.set(5, 5, 5);
-            scene.add(cyanLight);
+            const peachLight = new THREE.PointLight(0xfbbf94, 0.6, 50);
+            peachLight.position.set(8, 3, 8);
+            scene.add(peachLight);
 
-            const platformGroup = new THREE.Group();
-            scene.add(platformGroup);
+            // Pastel Glass Colors
+            const colors = [0xc4b5fd, 0x93c5fd, 0x86efac, 0xfbbf94, 0xfca5a5];
 
-            function createRoundedBoxShape(width, height, radius) {
-                const shape = new THREE.Shape();
-                const x = -width / 2;
-                const y = -height / 2;
-
-                shape.moveTo(x, y + radius);
-                shape.lineTo(x, y + height - radius);
-                shape.quadraticCurveTo(x, y + height, x + radius, y + height);
-                shape.lineTo(x + width - radius, y + height);
-                shape.quadraticCurveTo(x + width, y + height, x + width, y + height - radius);
-                shape.lineTo(x + width, y + radius);
-                shape.quadraticCurveTo(x + width, y, x + width - radius, y);
-                shape.lineTo(x + radius, y);
-                shape.quadraticCurveTo(x, y, x, y + radius);
-
-                return shape;
-            }
-
-            const baseSize = 12;
-            const baseShape = createRoundedBoxShape(baseSize, baseSize, 1);
-            const baseGeometry = new THREE.ExtrudeGeometry(baseShape, {
-                depth: 1.5,
-                bevelEnabled: true,
-                bevelSegments: 2,
-                bevelSize: 0.1,
-                bevelThickness: 0.1
-            });
-            baseGeometry.rotateX(Math.PI / 2);
-
-            const ledCanvas = document.createElement('canvas');
-            ledCanvas.width = 128;
-            ledCanvas.height = 128;
-            const ctx = ledCanvas.getContext('2d');
-            ctx.fillStyle = '#001133';
-            ctx.fillRect(0, 0, 128, 128);
-            ctx.fillStyle = '#00ccff';
-
-            for (let i = 0; i < 128; i += 8) {
-                for (let j = 0; j < 128; j += 8) {
-                    if ((i + j) % 16 === 0) {
-                        ctx.beginPath();
-                        ctx.arc(i + 4, j + 4, 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-            }
-            const ledTexture = new THREE.CanvasTexture(ledCanvas);
-            ledTexture.wrapS = THREE.RepeatWrapping;
-            ledTexture.wrapT = THREE.RepeatWrapping;
-            ledTexture.minFilter = THREE.NearestFilter;
-            ledTexture.magFilter = THREE.NearestFilter;
-
-            const baseMaterial = new THREE.MeshStandardMaterial({
-                color: 0x000000,
-                emissive: 0x0044aa,
-                emissiveMap: ledTexture,
-                emissiveIntensity: 2.0,
-                roughness: 0.4,
-                metalness: 0.8
-            });
-            const baseMesh = new THREE.Mesh(baseGeometry, [baseMaterial, baseMaterial]);
-            baseMesh.position.y = -2;
-            platformGroup.add(baseMesh);
-
-            const midShape = createRoundedBoxShape(baseSize - 0.5, baseSize - 0.5, 0.8);
-            const midGeometry = new THREE.ExtrudeGeometry(midShape, {
-                depth: 0.5,
-                bevelEnabled: true,
-                bevelSize: 0.1,
-                bevelThickness: 0.1
-            });
-            midGeometry.rotateX(Math.PI / 2);
-            const midMaterial = new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                roughness: 0.2,
-                metalness: 0.9,
-            });
-            const midMesh = new THREE.Mesh(midGeometry, midMaterial);
-            midMesh.position.y = -0.5;
-            platformGroup.add(midMesh);
-
-            const glassShape = createRoundedBoxShape(baseSize - 1, baseSize - 1, 0.6);
-            const glassGeometry = new THREE.ExtrudeGeometry(glassShape, {
-                depth: 0.2,
-                bevelEnabled: true,
-                bevelSize: 0.1,
-                bevelThickness: 0.1
-            });
-            glassGeometry.rotateX(Math.PI / 2);
-            const glassMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x000000,
-                metalness: 0.1,
-                roughness: 0.1,
-                transmission: 0.9,
-                opacity: 0.8,
-                transparent: true,
-                clearcoat: 1.0,
-                clearcoatRoughness: 0.1
-            });
-            const glassMesh = new THREE.Mesh(glassGeometry, glassMaterial);
-            glassMesh.position.y = 0.2;
-            platformGroup.add(glassMesh);
-
-            const shapePoints = glassShape.getPoints(50);
-            const borderGeo = new THREE.BufferGeometry().setFromPoints(shapePoints);
-            borderGeo.rotateX(Math.PI / 2);
-            const borderMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
-            const borderMesh = new THREE.LineLoop(borderGeo, borderMat);
-            borderMesh.position.y = 0.42;
-            platformGroup.add(borderMesh);
-
-            const particlesGroup = new THREE.Group();
-            platformGroup.add(particlesGroup);
-
-            const pGeo = new THREE.OctahedronGeometry(0.2);
-            const pMat = new THREE.MeshBasicMaterial({ color: 0x00ccff });
-            for (let i = 0; i < 15; i++) {
-                const mesh = new THREE.Mesh(pGeo, pMat);
+            // Floating glass orbs
+            const orbs = [];
+            for (let i = 0; i < 10; i++) {
+                const geo = new THREE.SphereGeometry(0.8 + Math.random() * 1.2, 32, 32);
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: colors[i % colors.length],
+                    roughness: 0.1,
+                    metalness: 0.02,
+                    transmission: 0.92,
+                    thickness: 2.5,
+                    transparent: true,
+                    opacity: 0.5,
+                    clearcoat: 1.0,
+                });
+                const mesh = new THREE.Mesh(geo, mat);
                 mesh.position.set(
-                    (Math.random() - 0.5) * 8,
-                    2 + Math.random() * 4,
-                    (Math.random() - 0.5) * 8
+                    (Math.random() - 0.5) * 30,
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 20
                 );
-                mesh.userData = {
-                    speed: 0.02 + Math.random() * 0.02,
-                    offset: Math.random() * Math.PI * 2
-                };
-                particlesGroup.add(mesh);
+                scene.add(mesh);
+                orbs.push({
+                    mesh,
+                    speed: 0.002 + Math.random() * 0.004,
+                    offset: Math.random() * Math.PI * 2,
+                    radius: 8 + Math.random() * 12
+                });
             }
 
-            const cursorShape = new THREE.Shape();
-            cursorShape.moveTo(0, 2);
-            cursorShape.lineTo(1.5, -2);
-            cursorShape.lineTo(0, -1);
-            cursorShape.lineTo(-1.5, -2);
-            cursorShape.lineTo(0, 2);
-
-            const cursorGeo = new THREE.ExtrudeGeometry(cursorShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1 });
-            cursorGeo.rotateX(Math.PI / 2);
-            cursorGeo.rotateX(-Math.PI / 4);
-
-            const cursorMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                emissive: 0x00ffff,
-                emissiveIntensity: 0.5,
-                metalness: 0.8,
-                roughness: 0.2
+            // Sparkle particles
+            const sparkleGeo = new THREE.BufferGeometry();
+            const sparkleCount = 350;
+            const sparklePos = new Float32Array(sparkleCount * 3);
+            for (let i = 0; i < sparkleCount * 3; i++) {
+                sparklePos[i] = (Math.random() - 0.5) * 80;
+            }
+            sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
+            const sparkleMat = new THREE.PointsMaterial({
+                color: 0xa78bfa,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.35
             });
-            const cursorMesh = new THREE.Mesh(cursorGeo, cursorMat);
-            cursorMesh.position.set(0, 1.5, 0);
-            platformGroup.add(cursorMesh);
+            const sparkles = new THREE.Points(sparkleGeo, sparkleMat);
+            scene.add(sparkles);
 
             let time = 0;
             function animate() {
                 requestAnimationFrame(animate);
-                time += 0.02;
+                time += 0.008;
 
-                platformGroup.position.y = Math.sin(time * 0.5) * 0.2;
-
-                particlesGroup.rotation.y = time * 0.2;
-                particlesGroup.children.forEach(p => {
-                    p.position.y += Math.sin(time + p.userData.offset) * 0.02;
+                orbs.forEach(orb => {
+                    orb.mesh.position.x += Math.sin(time * orb.speed * 10 + orb.offset) * 0.02;
+                    orb.mesh.position.y += Math.cos(time * 0.5 + orb.offset) * 0.01;
+                    orb.mesh.rotation.y += 0.005;
                 });
 
-                cursorMesh.rotation.y = Math.sin(time * 1.5) * 0.2;
-                cursorMesh.position.y = 1.5 + Math.sin(time * 2) * 0.3;
+                sparkles.rotation.y = time * 0.015;
+
+                camera.position.x = Math.sin(time * 0.08) * 2;
+                camera.position.y = 8 + Math.cos(time * 0.08) * 1.5;
+                camera.lookAt(0, 0, 0);
 
                 renderer.render(scene, camera);
             }
 
             window.addEventListener('resize', () => {
-                const aspect = window.innerWidth / window.innerHeight;
-                camera.left = -d * aspect;
-                camera.right = d * aspect;
-                camera.top = d;
-                camera.bottom = -d;
+                camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
@@ -1463,6 +1351,7 @@
             animate();
         })();
     </script>
+
 </body>
 
 </html>

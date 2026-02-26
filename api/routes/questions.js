@@ -26,17 +26,17 @@ router.post('/add', requireAdmin, async (req, res) => {
         } = req.body;
 
         // Validation
-        if (!roundNumber || roundNumber < 1 || roundNumber > 3) {
+        if (!roundNumber || roundNumber < 1) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid round number (must be 1, 2, or 3)'
+                message: 'Invalid round number'
             });
         }
 
-        if (!questionNumber || questionNumber < 1 || questionNumber > 15) {
+        if (!questionNumber || questionNumber < 1 || questionNumber > 50) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid question number (must be 1-15)'
+                message: 'Invalid question number (must be 1-50)'
             });
         }
 
@@ -153,7 +153,7 @@ router.get('/round/:roundNumber', requireAdmin, async (req, res) => {
     try {
         const roundNumber = parseInt(req.params.roundNumber);
 
-        if (!roundNumber || roundNumber < 1 || roundNumber > 3) {
+        if (!roundNumber || roundNumber < 1) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid round number'
@@ -254,7 +254,7 @@ router.post('/bulk-add', requireAdmin, async (req, res) => {
     try {
         const { roundNumber, questions } = req.body;
 
-        if (!roundNumber || roundNumber < 1 || roundNumber > 3) {
+        if (!roundNumber || roundNumber < 1) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid round number'
@@ -282,8 +282,22 @@ router.post('/bulk-add', requireAdmin, async (req, res) => {
             });
         }
 
+        // Validate question count: 10-50
+        if (questions.length < 10) {
+            return res.status(400).json({
+                success: false,
+                message: `Minimum 10 questions required. You provided ${questions.length}.`
+            });
+        }
+        if (questions.length > 50) {
+            return res.status(400).json({
+                success: false,
+                message: `Maximum 50 questions allowed. You provided ${questions.length}.`
+            });
+        }
+
         // Prepare questions for insertion
-        const questionsToInsert = questions.slice(0, 15).map((q, index) => ({
+        const questionsToInsert = questions.slice(0, 50).map((q, index) => ({
             round_number: roundNumber,
             question_number: index + 1,
             question_text: q.questionText?.trim() || q.question_text?.trim(),

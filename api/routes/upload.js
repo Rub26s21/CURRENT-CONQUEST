@@ -228,12 +228,12 @@ router.post('/questions', requireAdmin, upload.single('file'), async (req, res) 
 
         const roundNumber = parseInt(req.body.roundNumber);
 
-        if (!roundNumber || roundNumber < 1 || roundNumber > 3) {
+        if (!roundNumber || roundNumber < 1) {
             // Clean up uploaded file
             fs.unlinkSync(req.file.path);
             return res.status(400).json({
                 success: false,
-                message: 'Invalid round number (must be 1, 2, or 3)'
+                message: 'Invalid round number'
             });
         }
 
@@ -294,8 +294,8 @@ router.post('/questions', requireAdmin, upload.single('file'), async (req, res) 
             });
         }
 
-        // Limit to 15 questions per round
-        const questionsToInsert = questions.slice(0, 15).map((q, index) => ({
+        // Limit to 50 questions per round
+        const questionsToInsert = questions.slice(0, 50).map((q, index) => ({
             round_number: roundNumber,
             question_number: index + 1,
             question_text: q.questionText,

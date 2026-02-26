@@ -30,7 +30,8 @@
 
         .admin-sidebar {
             width: 260px;
-            background: var(--bg-secondary);
+            background: rgba(232, 236, 255, 0.7);
+            backdrop-filter: blur(12px);
             border-right: 1px solid var(--border-color);
             position: fixed;
             top: 0;
@@ -68,7 +69,8 @@
 
         .nav-item.active {
             background: var(--primary-glow);
-            color: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
         }
 
         .nav-icon {
@@ -380,8 +382,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(4px);
+            background: hsla(230, 40%, 10%, 0.15);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -487,16 +489,16 @@
         }
 
         .status-dot.inactive {
-            background: #6c757d;
+            background: #cbd5e1;
             animation: none;
         }
 
         .status-dot.running {
-            background: #28a745;
+            background: #22c55e;
         }
 
         .status-dot.completed {
-            background: #007bff;
+            background: #3b82f6;
             animation: none;
         }
 
@@ -741,8 +743,8 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Question Number (1-15)</label>
-                                <input type="number" id="questionNumber" class="form-input" min="1" max="15" required>
+                                <label class="form-label">Question Number (1-50)</label>
+                                <input type="number" id="questionNumber" class="form-input" min="1" max="50" required>
                             </div>
                         </div>
                         <div class="form-group">
@@ -1472,21 +1474,42 @@
                     const questionCount = data.questionsPerRound[i] || 0;
                     const isActive = data.eventState.currentRound === i && data.eventState.roundStatus === 'running';
                     const isCompleted = round.status === 'completed';
+                    const hasEnoughQuestions = questionCount >= 10 && questionCount <= 50;
+                    const durationMinutes = round.duration_minutes || 15;
+                    const hasTimer = durationMinutes >= 1 && durationMinutes <= 180;
                     const canStart = data.eventState.eventActive &&
                         !isActive &&
                         !isCompleted &&
-                        questionCount >= 15 &&
+                        hasEnoughQuestions &&
+                        hasTimer &&
                         (i === 1 || (data.rounds.find(r => r.round_number === i - 1)?.shortlisting_completed));
 
                     const card = document.createElement('div');
                     card.className = `round-card ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
+
+                    let questionWarning = '';
+                    if (questionCount < 10) {
+                        questionWarning = `<span style="color: var(--danger); font-size: 0.8rem;">⚠ Need ${10 - questionCount} more (min 10)</span>`;
+                    } else if (questionCount > 50) {
+                        questionWarning = `<span style="color: var(--danger); font-size: 0.8rem;">⚠ Too many (max 50)</span>`;
+                    }
+
                     card.innerHTML = `
                         <h3 class="round-card-title">Round ${i}</h3>
                         <div class="round-card-info">
-                            <p>Questions: ${questionCount}/15</p>
-                            <p>Duration: 15 minutes</p>
+                            <p>Questions: ${questionCount} ${questionWarning}</p>
+                            <p>Timer: ${durationMinutes} min</p>
                             <p>Status: ${isCompleted ? 'Completed' : isActive ? 'Running' : 'Pending'}</p>
                         </div>
+                        ${!isActive && !isCompleted ? `
+                            <div style="margin-bottom: 8px;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted);">Timer (1–180 min):</label>
+                                <div style="display: flex; gap: 5px; margin-top: 4px;">
+                                    <input type="number" id="timerInput_${i}" class="form-input" value="${durationMinutes}" min="1" max="180" style="width: 80px; padding: 4px 8px; font-size: 0.85rem;">
+                                    <button class="btn btn-secondary btn-sm" onclick="updateRoundTimer(${i})" style="font-size: 0.8rem;">Set</button>
+                                </div>
+                            </div>
+                        ` : ''}
                         ${isActive ? `
                             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                                 <button class="btn btn-danger btn-sm" onclick="endRound(${i})">End Round</button>
@@ -1504,7 +1527,7 @@
                         ` : canStart ? `
                             <button class="btn btn-success btn-sm" onclick="startRound(${i})">Start Round</button>
                         ` : `
-                            <span class="badge badge-neutral">${questionCount < 15 ? 'Add Questions' : 'Waiting'}</span>
+                            <span class="badge badge-neutral">${!hasEnoughQuestions ? (questionCount < 10 ? 'Add Questions (min 10)' : 'Too Many Questions') : !hasTimer ? 'Set Timer' : 'Waiting'}</span>
                         `}
                     `;
                     container.appendChild(card);
@@ -1586,11 +1609,39 @@
                 }
             };
 
+            // Update round timer
+            window.updateRoundTimer = async function (roundNumber) {
+                const input = document.getElementById(`timerInput_${roundNumber}`);
+                const duration = parseInt(input?.value);
+
+                if (!duration || duration < 1 || duration > 180) {
+                    alert('Timer must be between 1 and 180 minutes.');
+                    return;
+                }
+
+                try {
+                    const result = await api('/api/admin/round/update', {
+                        method: 'POST',
+                        body: JSON.stringify({ roundNumber, durationMinutes: duration })
+                    });
+
+                    if (result.success) {
+                        alert(result.message || 'Timer updated.');
+                        loadDashboard();
+                    } else {
+                        alert(result.message || 'Failed to update timer');
+                    }
+                } catch (error) {
+                    console.error('Update timer error:', error);
+                    alert('Failed to update timer');
+                }
+            };
+
             // Start round
             window.startRound = async function (roundNumber) {
                 const confirmed = await showConfirm(
                     `Start Round ${roundNumber}`,
-                    `This will start Round ${roundNumber} and the 15-minute timer will begin. All qualified participants will be able to take the exam. Continue?`,
+                    `This will start Round ${roundNumber} with the configured timer. All qualified participants will be able to take the exam. Continue?`,
                     '▶️'
                 );
 
@@ -2087,7 +2138,7 @@
                 if (!participants || participants.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="9" class="text-center text-muted">No submissions yet</td>
+                            <td colspan="9" class="text-center text-muted">No submissions found yet 😴</td>
                         </tr>
                     `;
                     return;
@@ -2096,13 +2147,13 @@
                 tbody.innerHTML = participants.map((p, idx) => {
                     const name = p.participant_name || 'Unknown';
                     const timeTaken = p.time_taken_seconds ? formatTime(p.time_taken_seconds) : '-';
-                    const scoreDisplay = p.score !== null && p.score !== undefined ? `${p.score}/15` : 'Pending';
+                    const scoreDisplay = p.score !== null && p.score !== undefined ? `${p.score}` : 'Pending';
                     const rankDisplay = p.rank ? `#${p.rank}` : '-';
                     const statusBadge = p.qualified_for_next
                         ? '<span class="badge badge-success">Qualified</span>'
                         : p.score !== null
                             ? '<span class="badge badge-neutral">Evaluated</span>'
-                            : '<span class="badge badge-warning" style="background: hsla(40, 80%, 50%, 0.2); color: hsl(40, 80%, 65%);">Awaiting</span>';
+                            : '<span class="badge badge-warning">Awaiting</span>';
 
                     return `
                     <tr>
@@ -2203,7 +2254,7 @@
                     <tr>
                         <td><strong>#${r.rank || '-'}</strong></td>
                         <td><strong>${name}</strong></td>
-                        <td><strong>${r.score !== null && r.score !== undefined ? r.score : '-'}/15</strong></td>
+                        <td><strong>${r.score !== null && r.score !== undefined ? r.score : '-'}</strong></td>
                         <td>${r.time_taken_seconds ? formatTime(r.time_taken_seconds) : '-'}</td>
                         <td>
                             ${r.qualified_for_next ?
@@ -2274,10 +2325,10 @@
                         <tr>
                             <td><strong>#${index + 1}</strong></td>
                             <td><strong>${p.name}</strong></td>
-                            <td>${p.round1 !== null ? p.round1 + '/15' : '-'}</td>
-                            <td>${p.round2 !== null ? p.round2 + '/15' : '-'}</td>
-                            <td>${p.round3 !== null ? p.round3 + '/15' : '-'}</td>
-                            <td><strong style="color: var(--primary-light);">${p.total}/45</strong></td>
+                            <td>${p.round1 !== null ? p.round1 : '-'}</td>
+                            <td>${p.round2 !== null ? p.round2 : '-'}</td>
+                            <td>${p.round3 !== null ? p.round3 : '-'}</td>
+                            <td><strong style="color: var(--primary-light);">${p.total}</strong></td>
                             <td>
                                 ${index < 3 ? '<span class="badge badge-success">🏆 Top 3</span>' :
                                 index < 10 ? '<span class="badge badge-primary">Top 10</span>' :

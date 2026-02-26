@@ -265,7 +265,7 @@ router.post('/round/start', requireAdmin, async (req, res) => {
     try {
         const { roundNumber } = req.body;
 
-        if (!roundNumber || roundNumber < 1 || roundNumber > 3) {
+        if (!roundNumber || roundNumber < 1) {
             return res.status(400).json({ success: false, message: 'Invalid round number' });
         }
 
@@ -277,6 +277,11 @@ router.post('/round/start', requireAdmin, async (req, res) => {
 
         if (!eventState.event_active) {
             return res.status(400).json({ success: false, message: 'Event must be activated first' });
+        }
+
+        // Prevent duplicate round start
+        if (eventState.round_status === 'running') {
+            return res.status(400).json({ success: false, message: 'A round is already running. End it first.' });
         }
 
         // Verify previous rounds completed
@@ -295,16 +300,22 @@ router.post('/round/start', requireAdmin, async (req, res) => {
             }
         }
 
-        // Verify 15 questions exist
+        // Verify question count is within 10-50 range
         const { count: questionCount } = await supabase
             .from('questions')
             .select('*', { count: 'exact', head: true })
             .eq('round_number', roundNumber);
 
-        if (questionCount < 15) {
+        if (questionCount < 10) {
             return res.status(400).json({
                 success: false,
-                message: `Round ${roundNumber} requires 15 questions. Currently has ${questionCount}.`
+                message: `Round ${roundNumber} requires at least 10 questions. Currently has ${questionCount}.`
+            });
+        }
+        if (questionCount > 50) {
+            return res.status(400).json({
+                success: false,
+                message: `Round ${roundNumber} has ${questionCount} questions. Maximum allowed is 50.`
             });
         }
 
@@ -313,6 +324,14 @@ router.post('/round/start', requireAdmin, async (req, res) => {
             .select('duration_minutes')
             .eq('round_number', roundNumber)
             .single();
+
+        // Validate timer is set
+        if (!round || !round.duration_minutes || round.duration_minutes < 1 || round.duration_minutes > 180) {
+            return res.status(400).json({
+                success: false,
+                message: 'Round timer must be set between 1 and 180 minutes before starting.'
+            });
+        }
 
         const now = new Date();
         const endsAt = new Date(now.getTime() + round.duration_minutes * 60 * 1000);
@@ -754,23 +773,45 @@ router.post('/round/update', requireAdmin, async (req, res) => {
     try {
         const { roundNumber, durationMinutes } = req.body;
 
-        if (!roundNumber || !durationMinutes) {
+        if (!roundNumber) {
             return res.status(400).json({
                 success: false,
-                message: 'Round number and duration are required'
+                message: 'Round number is required'
+            });
+        }
+
+        const duration = parseInt(durationMinutes);
+        if (!duration || duration < 1 || duration > 180) {
+            return res.status(400).json({
+                success: false,
+                message: 'Duration must be between 1 and 180 minutes'
+            });
+        }
+
+        // Check round is not currently running
+        const { data: round } = await supabase
+            .from('rounds')
+            .select('status')
+            .eq('round_number', roundNumber)
+            .single();
+
+        if (round && round.status === 'active') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot change timer while round is running'
             });
         }
 
         const { error } = await supabase
             .from('rounds')
-            .update({ duration_minutes: parseInt(durationMinutes) })
+            .update({ duration_minutes: duration })
             .eq('round_number', roundNumber);
         if (error) throw error;
 
         auditLog(null, req.admin.id, 'ROUND_UPDATED',
-            `Round ${roundNumber} duration set to ${durationMinutes} min`, roundNumber, req);
+            `Round ${roundNumber} duration set to ${duration} min`, roundNumber, req);
 
-        res.json({ success: true, message: 'Round settings updated' });
+        res.json({ success: true, message: `Round ${roundNumber} timer set to ${duration} minutes` });
     } catch (error) {
         console.error('Update round error:', error);
         res.status(500).json({ success: false, message: 'Failed to update round settings' });

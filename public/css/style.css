@@ -1,59 +1,59 @@
 /**
- * Quiz Conquest - ECE Professional Online Exam Platform
- * Main Stylesheet
+ * Quiz Conquest - White Glassmorphism Theme
+ * Bright, Playful, Premium Glass UI
  */
 
 /* ============================================
    CSS VARIABLES & THEME
    ============================================ */
 :root {
-    /* Primary Colors */
-    --primary-hue: 220;
-    --primary: hsl(var(--primary-hue), 70%, 50%);
-    --primary-light: hsl(var(--primary-hue), 70%, 60%);
-    --primary-dark: hsl(var(--primary-hue), 70%, 40%);
-    --primary-glow: hsla(var(--primary-hue), 70%, 50%, 0.3);
+    /* Primary Colors — Soft Violet/Blue */
+    --primary-hue: 250;
+    --primary: hsl(250, 70%, 58%);
+    --primary-light: hsl(250, 70%, 68%);
+    --primary-dark: hsl(250, 70%, 48%);
+    --primary-glow: hsla(250, 70%, 58%, 0.25);
 
-    /* Accent Colors */
-    --accent-hue: 160;
-    --accent: hsl(var(--accent-hue), 70%, 45%);
-    --accent-light: hsl(var(--accent-hue), 70%, 55%);
+    /* Accent Colors — Warm Coral/Peach */
+    --accent-hue: 20;
+    --accent: hsl(20, 90%, 62%);
+    --accent-light: hsl(20, 90%, 72%);
 
     /* Status Colors */
-    --success: hsl(145, 65%, 42%);
-    --success-light: hsl(145, 65%, 52%);
-    --warning: hsl(45, 90%, 50%);
-    --warning-light: hsl(45, 90%, 60%);
-    --danger: hsl(0, 70%, 55%);
-    --danger-light: hsl(0, 70%, 65%);
+    --success: hsl(160, 60%, 42%);
+    --success-light: hsl(160, 60%, 55%);
+    --warning: hsl(40, 95%, 52%);
+    --warning-light: hsl(40, 95%, 62%);
+    --danger: hsl(0, 70%, 58%);
+    --danger-light: hsl(0, 70%, 68%);
 
-    /* Dark Theme */
-    --bg-primary: hsl(220, 20%, 10%);
-    --bg-secondary: hsl(220, 18%, 13%);
-    --bg-tertiary: hsl(220, 16%, 16%);
-    --bg-card: hsl(220, 18%, 14%);
-    --bg-hover: hsl(220, 18%, 18%);
+    /* Light Theme */
+    --bg-primary: #f0f2ff;
+    --bg-secondary: #e8ecff;
+    --bg-tertiary: #f5f7ff;
+    --bg-card: rgba(255, 255, 255, 0.55);
+    --bg-hover: rgba(255, 255, 255, 0.75);
 
-    /* Surface Colors */
-    --surface-1: hsla(220, 20%, 20%, 0.6);
-    --surface-2: hsla(220, 20%, 25%, 0.4);
-    --surface-glass: hsla(220, 20%, 15%, 0.8);
+    /* Surface Colors — Frosted Glass */
+    --surface-1: rgba(255, 255, 255, 0.45);
+    --surface-2: rgba(255, 255, 255, 0.65);
+    --surface-glass: rgba(255, 255, 255, 0.5);
 
     /* Text Colors */
-    --text-primary: hsl(220, 15%, 95%);
-    --text-secondary: hsl(220, 10%, 70%);
-    --text-muted: hsl(220, 10%, 50%);
-    --text-inverse: hsl(220, 20%, 10%);
+    --text-primary: hsl(230, 25%, 18%);
+    --text-secondary: hsl(230, 15%, 42%);
+    --text-muted: hsl(230, 10%, 58%);
+    --text-inverse: hsl(0, 0%, 100%);
 
     /* Borders */
-    --border-color: hsla(220, 20%, 30%, 0.5);
-    --border-light: hsla(220, 20%, 40%, 0.3);
+    --border-color: rgba(180, 190, 230, 0.45);
+    --border-light: rgba(200, 210, 240, 0.35);
 
-    /* Shadows */
-    --shadow-sm: 0 2px 4px hsla(0, 0%, 0%, 0.2);
-    --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
-    --shadow-lg: 0 8px 24px hsla(0, 0%, 0%, 0.4);
-    --shadow-glow: 0 0 20px var(--primary-glow);
+    /* Shadows — Soft Pastel */
+    --shadow-sm: 0 2px 8px rgba(130, 140, 200, 0.1);
+    --shadow-md: 0 4px 16px rgba(130, 140, 200, 0.12);
+    --shadow-lg: 0 8px 32px rgba(130, 140, 200, 0.15);
+    --shadow-glow: 0 0 24px var(--primary-glow);
 
     /* Typography */
     --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -68,10 +68,10 @@
     --space-2xl: 3rem;
 
     /* Border Radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
     --radius-full: 9999px;
 
     /* Transitions */
@@ -107,7 +107,7 @@ body {
     overflow-x: hidden;
 }
 
-/* Background Pattern */
+/* Multi-color soft gradient background */
 body::before {
     content: '';
     position: fixed;
@@ -116,20 +116,21 @@ body::before {
     right: 0;
     bottom: 0;
     background:
-        radial-gradient(ellipse at 20% 20%, hsla(var(--primary-hue), 50%, 30%, 0.1) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 80%, hsla(var(--accent-hue), 50%, 30%, 0.08) 0%, transparent 50%);
+        radial-gradient(ellipse at 15% 25%, hsla(270, 60%, 80%, 0.35) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 75%, hsla(30, 70%, 85%, 0.3) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, hsla(200, 60%, 88%, 0.25) 0%, transparent 60%);
     pointer-events: none;
     z-index: -1;
 }
 
 a {
-    color: var(--primary-light);
+    color: var(--primary);
     text-decoration: none;
     transition: color var(--transition-fast);
 }
 
 a:hover {
-    color: var(--primary);
+    color: var(--primary-dark);
 }
 
 img {
@@ -241,7 +242,7 @@ h6 {
 }
 
 .title-gradient {
-    background: linear-gradient(135deg, var(--primary-light), var(--accent));
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -257,7 +258,7 @@ h6 {
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-lg);
     font-size: 0.95rem;
-    font-weight: 500;
+    font-weight: 600;
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -284,18 +285,19 @@ h6 {
 }
 
 .btn-secondary {
-    background: var(--surface-1);
+    background: var(--surface-2);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: var(--surface-2);
+    background: rgba(255, 255, 255, 0.8);
     border-color: var(--primary);
 }
 
 .btn-success {
-    background: linear-gradient(135deg, var(--success), hsl(145, 65%, 35%));
+    background: linear-gradient(135deg, var(--success), hsl(160, 60%, 35%));
     color: white;
 }
 
@@ -305,7 +307,7 @@ h6 {
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--danger), hsl(0, 70%, 45%));
+    background: linear-gradient(135deg, var(--danger), hsl(0, 70%, 48%));
     color: white;
 }
 
@@ -315,8 +317,8 @@ h6 {
 }
 
 .btn-warning {
-    background: linear-gradient(135deg, var(--warning), hsl(45, 90%, 40%));
-    color: var(--text-inverse);
+    background: linear-gradient(135deg, var(--warning), hsl(40, 90%, 42%));
+    color: var(--text-primary);
 }
 
 .btn-warning:hover:not(:disabled) {
@@ -356,7 +358,7 @@ h6 {
     display: block;
     margin-bottom: var(--space-sm);
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-secondary);
 }
 
@@ -365,9 +367,10 @@ h6 {
     padding: var(--space-md);
     font-size: 1rem;
     color: var(--text-primary);
-    background: var(--surface-1);
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.6);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-md);
+    backdrop-filter: blur(8px);
     transition: all var(--transition-fast);
 }
 
@@ -375,6 +378,7 @@ h6 {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--primary-glow);
+    background: rgba(255, 255, 255, 0.85);
 }
 
 .form-input::placeholder {
@@ -388,7 +392,7 @@ h6 {
 
 .form-select {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10L6 8z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10L6 8z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right var(--space-md) center;
     padding-right: var(--space-2xl);
@@ -405,16 +409,18 @@ h6 {
    ============================================ */
 .card {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     overflow: hidden;
 }
 
 .card-header {
     padding: var(--space-lg);
     border-bottom: 1px solid var(--border-color);
-    background: var(--surface-1);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .card-body {
@@ -424,13 +430,13 @@ h6 {
 .card-footer {
     padding: var(--space-lg);
     border-top: 1px solid var(--border-color);
-    background: var(--surface-1);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .card-glass {
     background: var(--surface-glass);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 /* ============================================
@@ -449,26 +455,26 @@ h6 {
 
 .badge-primary {
     background: var(--primary-glow);
-    color: var(--primary-light);
+    color: var(--primary-dark);
 }
 
 .badge-success {
-    background: hsla(145, 65%, 42%, 0.2);
-    color: var(--success-light);
+    background: hsla(160, 60%, 42%, 0.15);
+    color: var(--success);
 }
 
 .badge-warning {
-    background: hsla(45, 90%, 50%, 0.2);
-    color: var(--warning);
+    background: hsla(40, 95%, 52%, 0.15);
+    color: hsl(30, 80%, 40%);
 }
 
 .badge-danger {
-    background: hsla(0, 70%, 55%, 0.2);
-    color: var(--danger-light);
+    background: hsla(0, 70%, 58%, 0.15);
+    color: var(--danger);
 }
 
 .badge-neutral {
-    background: var(--surface-1);
+    background: rgba(180, 190, 220, 0.2);
     color: var(--text-secondary);
 }
 
@@ -482,6 +488,7 @@ h6 {
     padding: var(--space-lg);
     border-radius: var(--radius-md);
     border: 1px solid;
+    backdrop-filter: blur(8px);
 }
 
 .alert-icon {
@@ -491,27 +498,27 @@ h6 {
 }
 
 .alert-success {
-    background: hsla(145, 65%, 42%, 0.1);
+    background: hsla(160, 60%, 42%, 0.08);
     border-color: var(--success);
-    color: var(--success-light);
+    color: var(--success);
 }
 
 .alert-warning {
-    background: hsla(45, 90%, 50%, 0.1);
+    background: hsla(40, 95%, 52%, 0.08);
     border-color: var(--warning);
-    color: var(--warning);
+    color: hsl(30, 80%, 40%);
 }
 
 .alert-danger {
-    background: hsla(0, 70%, 55%, 0.1);
+    background: hsla(0, 70%, 58%, 0.08);
     border-color: var(--danger);
-    color: var(--danger-light);
+    color: var(--danger);
 }
 
 .alert-info {
-    background: hsla(var(--primary-hue), 70%, 50%, 0.1);
+    background: hsla(250, 70%, 58%, 0.08);
     border-color: var(--primary);
-    color: var(--primary-light);
+    color: var(--primary-dark);
 }
 
 /* ============================================
@@ -523,8 +530,8 @@ h6 {
     left: 0;
     right: 0;
     bottom: 0;
-    background: hsla(0, 0%, 0%, 0.7);
-    backdrop-filter: blur(4px);
+    background: hsla(230, 20%, 50%, 0.3);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -540,10 +547,12 @@ h6 {
 }
 
 .modal {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     max-width: 500px;
     width: 90%;
     max-height: 90vh;
@@ -584,7 +593,7 @@ h6 {
 }
 
 .modal-close:hover {
-    background: var(--surface-1);
+    background: rgba(0, 0, 0, 0.05);
     color: var(--text-primary);
 }
 
@@ -607,7 +616,7 @@ h6 {
     display: inline-block;
     width: 24px;
     height: 24px;
-    border: 3px solid var(--surface-2);
+    border: 3px solid rgba(180, 190, 230, 0.3);
     border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -651,7 +660,8 @@ h6 {
 .table-container {
     overflow-x: auto;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
+    backdrop-filter: blur(12px);
 }
 
 .table {
@@ -668,7 +678,7 @@ h6 {
 }
 
 .table th {
-    background: var(--surface-1);
+    background: rgba(255, 255, 255, 0.5);
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -695,11 +705,12 @@ h6 {
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-lg);
     background: var(--surface-glass);
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-full);
     font-family: var(--font-mono);
     font-size: 1.4rem;
     font-weight: 600;
+    backdrop-filter: blur(12px);
 }
 
 .exam-timer.warning {
@@ -729,17 +740,18 @@ h6 {
 /* Question Card */
 .question-card {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-xl);
     padding: var(--space-2xl);
     box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(16px);
 }
 
 .question-number {
     display: inline-block;
     padding: var(--space-xs) var(--space-md);
     background: var(--primary-glow);
-    color: var(--primary-light);
+    color: var(--primary-dark);
     border-radius: var(--radius-full);
     font-size: 0.85rem;
     font-weight: 600;
@@ -776,15 +788,16 @@ h6 {
     align-items: flex-start;
     gap: var(--space-md);
     padding: var(--space-lg);
-    background: var(--surface-1);
+    background: rgba(255, 255, 255, 0.5);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
     cursor: pointer;
     transition: all var(--transition-fast);
+    backdrop-filter: blur(8px);
 }
 
 .option-label:hover {
-    background: var(--surface-2);
+    background: rgba(255, 255, 255, 0.75);
     border-color: var(--primary);
 }
 
@@ -804,7 +817,7 @@ h6 {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-tertiary);
+    background: rgba(255, 255, 255, 0.6);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-md);
     font-weight: 600;
@@ -828,7 +841,7 @@ h6 {
 .progress-bar {
     width: 100%;
     height: 8px;
-    background: var(--surface-1);
+    background: rgba(200, 210, 240, 0.3);
     border-radius: var(--radius-full);
     overflow: hidden;
 }
@@ -846,9 +859,9 @@ h6 {
 .header {
     position: sticky;
     top: 0;
-    background: var(--surface-glass);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-color);
     z-index: 100;
 }
@@ -893,9 +906,10 @@ h6 {
 
 .stat-card {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--space-lg);
+    backdrop-filter: blur(12px);
 }
 
 .stat-label {
@@ -912,7 +926,7 @@ h6 {
 
 .stat-card.primary {
     border-color: var(--primary);
-    background: linear-gradient(135deg, hsla(var(--primary-hue), 70%, 50%, 0.1), transparent);
+    background: linear-gradient(135deg, hsla(250, 70%, 58%, 0.08), transparent);
 }
 
 /* ============================================
@@ -1012,9 +1026,10 @@ h6 {
     display: flex;
     gap: var(--space-xs);
     padding: var(--space-xs);
-    background: var(--surface-1);
+    background: rgba(255, 255, 255, 0.4);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-xl);
+    backdrop-filter: blur(8px);
 }
 
 .tab-btn {
@@ -1031,12 +1046,13 @@ h6 {
 
 .tab-btn:hover {
     color: var(--text-primary);
-    background: var(--surface-2);
+    background: rgba(255, 255, 255, 0.5);
 }
 
 .tab-btn.active {
     background: var(--primary);
     color: white;
+    box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .tab-content {
@@ -1058,7 +1074,7 @@ h6 {
     width: 64px;
     height: 64px;
     margin: 0 auto var(--space-lg);
-    background: hsla(45, 90%, 50%, 0.1);
+    background: hsla(40, 95%, 52%, 0.1);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1171,14 +1187,14 @@ h6 {
     width: 100px;
     height: 100px;
     margin-bottom: var(--space-xl);
-    background: linear-gradient(135deg, var(--success), hsl(145, 65%, 35%));
+    background: linear-gradient(135deg, var(--success), hsl(160, 60%, 35%));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 3rem;
     color: white;
-    box-shadow: 0 0 40px hsla(145, 65%, 42%, 0.4);
+    box-shadow: 0 0 40px hsla(160, 60%, 42%, 0.3);
 }
 
 .completion-title {
