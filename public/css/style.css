@@ -7,12 +7,12 @@
    CSS VARIABLES & THEME
    ============================================ */
 :root {
-    /* Primary Colors — Soft Violet/Blue */
-    --primary-hue: 250;
-    --primary: hsl(250, 70%, 58%);
-    --primary-light: hsl(250, 70%, 68%);
-    --primary-dark: hsl(250, 70%, 48%);
-    --primary-glow: hsla(250, 70%, 58%, 0.25);
+    /* Primary Colors — Soft Blue Glassmorphism */
+    --primary-hue: 215;
+    --primary: hsl(215, 80%, 55%);
+    --primary-light: hsl(215, 80%, 65%);
+    --primary-dark: hsl(215, 80%, 45%);
+    --primary-glow: hsla(215, 80%, 55%, 0.25);
 
     /* Accent Colors — Warm Coral/Peach */
     --accent-hue: 20;
@@ -27,10 +27,10 @@
     --danger: hsl(0, 70%, 58%);
     --danger-light: hsl(0, 70%, 68%);
 
-    /* Light Theme */
-    --bg-primary: #f0f2ff;
-    --bg-secondary: #e8ecff;
-    --bg-tertiary: #f5f7ff;
+    /* Light Theme (Blue Tint) */
+    --bg-primary: #f0f6ff;
+    --bg-secondary: #e6f0ff;
+    --bg-tertiary: #f2f8ff;
     --bg-card: rgba(255, 255, 255, 0.55);
     --bg-hover: rgba(255, 255, 255, 0.75);
 
